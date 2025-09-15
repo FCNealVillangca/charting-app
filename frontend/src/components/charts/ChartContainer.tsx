@@ -1,5 +1,4 @@
 import React, { useRef } from "react";
-import type { PlotlyHTMLElement } from "plotly.js";
 import BaseChart from "./BaseChart";
 import Sidebar from "./Sidebar";
 import type { DataPoint } from "./types";
@@ -10,7 +9,7 @@ interface ChartContainerProps {
 }
 
 const ChartContainer: React.FC<ChartContainerProps> = ({ data }) => {
-  const [, setChart] = React.useState<PlotlyHTMLElement | null>(null);
+  const [, setChart] = React.useState<HTMLDivElement | null>(null);
   const chartRef = useRef<BaseChartRef>(null);
 
   const handleResetZoom = () => {

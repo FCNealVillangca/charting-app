@@ -1,24 +1,29 @@
-import { useRef, useMemo, useImperativeHandle, forwardRef } from "react";
-import Plot from "react-plotly.js";
+import {
+  useRef,
+  useMemo,
+  useImperativeHandle,
+  forwardRef,
+  useEffect,
+} from "react";
+import Plotly from "plotly.js-dist";
 import type { DataPoint } from "./types";
-import type { PlotlyHTMLElement } from "plotly.js";
 
 // Exposed imperative API
 export interface BaseChartRef {
   resetZoom: () => void;
-  getChart: () => PlotlyHTMLElement | null;
+  getChart: () => HTMLDivElement | null;
 }
 
 interface BaseChartProps {
   data: DataPoint[];
   width?: number;
   height?: number;
-  onChartCreated?: (chart: PlotlyHTMLElement) => void;
+  onChartCreated?: (chart: HTMLDivElement) => void;
 }
 
 const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
   ({ data, onChartCreated }, ref) => {
-    const chartRef = useRef<PlotlyHTMLElement | null>(null);
+    const chartRef = useRef<HTMLDivElement | null>(null);
 
     const chartData = useMemo(() => {
       const seen = new Map<number, DataPoint>();
@@ -62,7 +67,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         plot_bgcolor: "transparent",
         margin: { l: 60, r: 60, t: 20, b: 40 },
         xaxis: {
-          type: "date" as const,
+          type: "linear" as const,
           rangeslider: { visible: false },
           autorange: true,
           tickmode: "auto" as const, // Let Plotly automatically choose tick positions
@@ -79,16 +84,27 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
       []
     );
 
-    // ✅ Reset zoom using window.Plotly, which react-plotly.js attaches
+    const config = useMemo(
+      () => ({
+        displayModeBar: true,
+        scrollZoom: true,
+        doubleClick: "reset+autosize" as const,
+        displaylogo: false,
+        responsive: true, // Enable responsive behavior
+        toImageButtonOptions: {
+          format: "png" as const,
+          filename: "chart",
+          height: 500,
+          width: 700,
+          scale: 1,
+        },
+      }),
+      []
+    );
+
     const resetZoom = () => {
-      if (
-        chartRef.current &&
-        typeof window !== "undefined" &&
-        "Plotly" in window
-      ) {
-        (
-          window as typeof window & { Plotly: typeof import("plotly.js") }
-        ).Plotly.relayout(chartRef.current, {
+      if (chartRef.current) {
+        Plotly.relayout(chartRef.current, {
           "xaxis.autorange": true,
           "yaxis.autorange": true,
         });
@@ -100,32 +116,45 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
       getChart: () => chartRef.current,
     }));
 
+    useEffect(() => {
+      const chartElement = chartRef.current;
+      if (chartElement && plotlyData.length > 0) {
+        Plotly.newPlot(chartElement, plotlyData, layout, config)
+          .then(() => {
+            if (chartElement && onChartCreated) {
+              onChartCreated(chartElement);
+            }
+          })
+          .catch((error) => {
+            console.error("Error creating plot:", error);
+          });
+      }
+
+      return () => {
+        if (chartElement) {
+          Plotly.purge(chartElement);
+        }
+      };
+    }, [plotlyData, layout, config, onChartCreated]);
+
+    useEffect(() => {
+      const handleResize = () => {
+        if (chartRef.current) {
+          Plotly.Plots.resize(chartRef.current);
+        }
+      };
+
+      window.addEventListener("resize", handleResize);
+      return () => {
+        window.removeEventListener("resize", handleResize);
+      };
+    }, []);
+
     return (
-      <div style={{ position: "relative", width: "100%", height: "100%" }}>
-        <Plot
-          data={plotlyData}
-          layout={layout}
-          config={{
-            displayModeBar: true,
-            scrollZoom: true,
-            doubleClick: "reset+autosize",
-            displaylogo: false,
-            responsive: true, // Enable responsive behavior
-            toImageButtonOptions: {
-              format: "png",
-              filename: "chart",
-              height: 500,
-              width: 700,
-              scale: 1,
-            },
-          }}
-          onInitialized={(_figure, graphDiv) => {
-            chartRef.current = graphDiv;
-            if (onChartCreated) onChartCreated(graphDiv);
-          }}
-          style={{ width: "100%", height: "100%" }}
-        />
-      </div>
+      <div
+        ref={chartRef}
+        style={{ position: "relative", width: "100%", height: "100%" }}
+      />
     );
   }
 );
