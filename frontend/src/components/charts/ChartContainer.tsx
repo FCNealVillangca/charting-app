@@ -7,24 +7,9 @@ import type { BaseChartRef } from "./BaseChart";
 
 interface ChartContainerProps {
   data: DataPoint[];
-  width?: number;
-  height?: number;
-  // Toolbar customization options
-  showToolbar?: boolean;
-  customToolbarConfig?: {
-    buttonsToRemove?: string[];
-    buttonsToAdd?: Plotly.ModeBarButton[];
-    customConfig?: Partial<Plotly.Config>;
-  };
 }
 
-const ChartContainer: React.FC<ChartContainerProps> = ({
-  data,
-  width,
-  height,
-  showToolbar = true,
-  customToolbarConfig = {},
-}) => {
+const ChartContainer: React.FC<ChartContainerProps> = ({ data }) => {
   const [, setChart] = React.useState<PlotlyHTMLElement | null>(null);
   const chartRef = useRef<BaseChartRef>(null);
 
@@ -39,21 +24,22 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
   };
 
   return (
-    <div style={{ display: "flex", height: "100%" }}>
+    <div style={{ display: "flex", height: "100%", width: "100%" }}>
       <Sidebar
         onResetZoom={handleResetZoom}
         onToggleCrosshair={handleToggleCrosshair}
       />
-      <div style={{ flex: 1, marginLeft: "8px", position: "relative" }}>
+      <div
+        style={{
+          flex: 1,
+          marginLeft: "8px",
+          position: "relative",
+          height: "100%",
+        }}
+      >
         <BaseChart
           ref={chartRef}
           data={data}
-          width={width}
-          height={height}
-          showToolbar={showToolbar}
-          toolbarButtonsToRemove={customToolbarConfig.buttonsToRemove}
-          toolbarButtonsToAdd={customToolbarConfig.buttonsToAdd}
-          customToolbarConfig={customToolbarConfig.customConfig}
           onChartCreated={(newChart) => {
             setChart(newChart);
           }}

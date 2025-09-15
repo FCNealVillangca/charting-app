@@ -9,7 +9,6 @@ export interface BaseChartRef {
   getChart: () => PlotlyHTMLElement | null;
 }
 
-// Props
 interface BaseChartProps {
   data: DataPoint[];
   width?: number;
@@ -20,11 +19,8 @@ interface BaseChartProps {
 const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
   ({ data, width, height, onChartCreated }, ref) => {
     const chartRef = useRef<PlotlyHTMLElement | null>(null);
-    const plotlyInstanceRef = useRef<Plotly.Plotly | null>(null); // 👈 Renamed for clarity
 
     const chartData = useMemo(() => {
-      if (data.length === 0) return [];
-
       const seen = new Map<number, DataPoint>();
       for (const item of data) {
         if (
@@ -32,17 +28,11 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           typeof item.time === "number" &&
           !isNaN(item.time) &&
           typeof item.open === "number" &&
-          !isNaN(item.open) &&
           typeof item.high === "number" &&
-          !isNaN(item.high) &&
           typeof item.low === "number" &&
-          !isNaN(item.low) &&
-          typeof item.close === "number" &&
-          !isNaN(item.close)
+          typeof item.close === "number"
         ) {
-          if (!seen.has(item.time)) {
-            seen.set(item.time, item);
-          }
+          if (!seen.has(item.time)) seen.set(item.time, item);
         }
       }
       return Array.from(seen.values()).sort((a, b) => a.time - b.time);
@@ -50,24 +40,16 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
 
     const plotlyData = useMemo(() => {
       if (chartData.length === 0) return [];
-
       return [
         {
           type: "candlestick",
-          x: chartData.map((d) => new Date(d.time * 1000)),
+          x: chartData.map((_, index) => index), // Use continuous index for no gaps
           open: chartData.map((d) => d.open),
           high: chartData.map((d) => d.high),
           low: chartData.map((d) => d.low),
           close: chartData.map((d) => d.close),
-          increasing: {
-            line: { color: "#089981", width: 1 },
-            fillcolor: "#089981",
-          },
-          decreasing: {
-            line: { color: "#f23645", width: 1 },
-            fillcolor: "#f23645",
-          },
-          name: "Price",
+          increasing: { line: { color: "#089981" } },
+          decreasing: { line: { color: "#f23645" } },
           showlegend: false,
         },
       ];
@@ -75,51 +57,35 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
 
     const layout = useMemo(
       () => ({
-        width,
-        height,
-        showlegend: false,
+        autosize: true, // Enable responsive sizing - no fixed width/height
         paper_bgcolor: "transparent",
         plot_bgcolor: "transparent",
-        font: { color: "#333333" },
         margin: { l: 60, r: 60, t: 20, b: 40 },
         xaxis: {
           type: "date",
           rangeslider: { visible: false },
-          gridcolor: "#e0e0e0",
-          linecolor: "#cccccc",
-          tickcolor: "#666666",
-          tickfont: { color: "#333333" },
-          showgrid: true,
           autorange: true,
-          fixedrange: false,
-          tickmode: "auto",
-          tickformat: "%H:%M\n%d %b",
+          tickmode: "auto", // Let Plotly automatically choose tick positions
+          tickformat: "%m/%d", // Format as MM/DD
         },
         yaxis: {
-          title: { font: { color: "#333333" } },
-          gridcolor: "#e0e0e0",
-          linecolor: "#cccccc",
-          tickcolor: "#666666",
-          tickfont: { color: "#333333" },
-          showgrid: true,
-          zeroline: false,
-          fixedrange: false,
           autorange: true,
+          fixedrange: false,
+        },
+        modebar: {
+          orientation: "v", // Force vertical orientation
         },
       }),
-      [width, height]
+      []
     );
 
-    // ✅ FIXED: Use Plotly from callback, not window
+    // ✅ Reset zoom using window.Plotly, which react-plotly.js attaches
     const resetZoom = () => {
-      const Plotly = plotlyInstanceRef.current; // 👈 Use saved instance
-      if (chartRef.current && Plotly) {
-        Plotly.relayout(chartRef.current, {
+      if (chartRef.current && (window as any).Plotly) {
+        (window as any).Plotly.relayout(chartRef.current, {
           "xaxis.autorange": true,
           "yaxis.autorange": true,
         });
-      } else {
-        console.warn("Plotly or chart element not ready for reset.");
       }
     };
 
@@ -135,59 +101,28 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           layout={layout}
           config={{
             displayModeBar: true,
-            responsive: true,
-            staticPlot: false,
             scrollZoom: true,
             doubleClick: "reset+autosize",
-            showTips: true,
-            showLink: false,
-            sendData: false,
             displaylogo: false,
-            modeBarButtonsToRemove: ["toImage", "sendDataToCloud"],
+            responsive: true, // Enable responsive behavior
+            toImageButtonOptions: {
+              format: "png",
+              filename: "chart",
+              height: 500,
+              width: 700,
+              scale: 1,
+            },
           }}
-          onInitialized={(_figure, graphDiv, Plotly) => {
-            // ✅ CRITICAL FIX: Save Plotly from callback argument
+          onInitialized={(_figure, graphDiv) => {
             chartRef.current = graphDiv;
-            plotlyInstanceRef.current = Plotly; // 👈 This is the real Plotly!
-
-            if (onChartCreated) {
-              onChartCreated(graphDiv);
-            }
+            if (onChartCreated) onChartCreated(graphDiv);
           }}
-          style={{
-            width: "100%",
-            height: "100%",
-            minHeight: height ? `${height}px` : "400px",
-          }}
+          style={{ width: "100%", height: "100%" }}
         />
-
-        {/* ✅ WORKING RESET BUTTON */}
-        <button
-          onClick={resetZoom}
-          style={{
-            position: "absolute",
-            top: "10px",
-            right: "10px",
-            zIndex: 10,
-            padding: "6px 12px",
-            background: "#f23645",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontSize: "12px",
-            fontWeight: "bold",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-          }}
-          aria-label="Reset zoom"
-        >
-          Reset View
-        </button>
       </div>
     );
   }
 );
 
 BaseChart.displayName = "BaseChart";
-
 export default BaseChart;
