@@ -17,7 +17,7 @@ interface BaseChartProps {
 }
 
 const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
-  ({ data, width, height, onChartCreated }, ref) => {
+  ({ data, onChartCreated }, ref) => {
     const chartRef = useRef<PlotlyHTMLElement | null>(null);
 
     const chartData = useMemo(() => {
@@ -42,7 +42,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
       if (chartData.length === 0) return [];
       return [
         {
-          type: "candlestick",
+          type: "candlestick" as const,
           x: chartData.map((_, index) => index), // Use continuous index for no gaps
           open: chartData.map((d) => d.open),
           high: chartData.map((d) => d.high),
@@ -62,10 +62,10 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         plot_bgcolor: "transparent",
         margin: { l: 60, r: 60, t: 20, b: 40 },
         xaxis: {
-          type: "date",
+          type: "date" as const,
           rangeslider: { visible: false },
           autorange: true,
-          tickmode: "auto", // Let Plotly automatically choose tick positions
+          tickmode: "auto" as const, // Let Plotly automatically choose tick positions
           tickformat: "%m/%d", // Format as MM/DD
         },
         yaxis: {
@@ -73,7 +73,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           fixedrange: false,
         },
         modebar: {
-          orientation: "v", // Force vertical orientation
+          orientation: "v" as const, // Force vertical orientation
         },
       }),
       []
@@ -81,8 +81,14 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
 
     // ✅ Reset zoom using window.Plotly, which react-plotly.js attaches
     const resetZoom = () => {
-      if (chartRef.current && (window as any).Plotly) {
-        (window as any).Plotly.relayout(chartRef.current, {
+      if (
+        chartRef.current &&
+        typeof window !== "undefined" &&
+        "Plotly" in window
+      ) {
+        (
+          window as typeof window & { Plotly: typeof import("plotly.js") }
+        ).Plotly.relayout(chartRef.current, {
           "xaxis.autorange": true,
           "yaxis.autorange": true,
         });
