@@ -34,15 +34,18 @@ const ChartContainer: React.FC<ChartContainerProps> = ({ data }) => {
           marginLeft: "8px",
           position: "relative",
           height: "100%",
+          display: "flex",
         }}
       >
-        <BaseChart
-          ref={chartRef}
-          data={data}
-          onChartCreated={(newChart) => {
-            setChart(newChart);
-          }}
-        />
+        <div style={{ flex: 1, position: "relative" }}>
+          <BaseChart
+            ref={chartRef}
+            data={data}
+            onChartCreated={(newChart) => {
+              setChart(newChart);
+            }}
+          />
+        </div>
       </div>
     </div>
   );
