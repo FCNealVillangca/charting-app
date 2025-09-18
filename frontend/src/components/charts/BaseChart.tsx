@@ -5,11 +5,13 @@ import {
   forwardRef,
   useEffect,
   useState,
+  useContext,
 } from "react";
 import Highcharts from "highcharts";
 import "highcharts/highcharts-more";
 import "highcharts/modules/stock";
 import type { DataPoint } from "./types";
+import { ChartContext } from "./chartContext";
 
 // Exposed imperative API
 export interface BaseChartRef {
@@ -29,16 +31,13 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
   ({ data, onChartCreated }, ref) => {
     const chartRef = useRef<HTMLDivElement | null>(null);
     const chartInstance = useRef<Highcharts.Chart | null>(null);
+    const { markers, addMarker, clearMarkers } = useContext(ChartContext)!;
     const [tooltipData, setTooltipData] = useState<{
       visible: boolean;
       x: number;
       y: number;
       data: DataPoint | null;
     }>({ visible: false, x: 0, y: 0, data: null });
-
-    const [markers, setMarkers] = useState<
-      Array<{ x: number; y: number; id: string }>
-    >([]);
 
     const chartData = useMemo(() => {
       const seen = new Map<number, DataPoint>();
@@ -204,11 +203,6 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
       }
     };
 
-    const clearMarkers = () => {
-      setMarkers([]);
-      console.log("All markers cleared");
-    };
-
     useImperativeHandle(ref, () => ({
       resetZoom,
       getChart: () => chartInstance.current,
@@ -265,7 +259,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           case "Home":
             e.preventDefault();
             // Reset to show all data
-            xAxis.setExtremes(null, null);
+            xAxis.setExtremes(undefined, undefined);
             break;
         }
       };
@@ -295,7 +289,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         const xAxis = chart.xAxis[0];
 
         // Get mouse position relative to chart
-        const rect = chart.renderTo.getBoundingClientRect();
+        const rect = chart.container.getBoundingClientRect();
         const x = e.clientX - rect.left;
 
         // Convert to axis values
@@ -326,7 +320,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         const yAxis = chart.yAxis[0];
 
         // Get mouse position relative to chart
-        const rect = chart.renderTo.getBoundingClientRect();
+        const rect = chart.container.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
@@ -341,7 +335,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           id: `marker_${Date.now()}_${Math.random()}`,
         };
 
-        setMarkers((prev) => [...prev, newMarker]);
+        addMarker(newMarker);
 
         console.log(
           `Placed dot at: X=${xValue.toFixed(2)}, Y=${yValue.toFixed(5)}`

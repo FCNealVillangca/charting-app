@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams } from "react-router";
 import BaseChart from "../../components/charts/BaseChart";
 import NavigationBar from "../../components/NavigationBar";
+import { ChartProvider } from "../../components/charts/chartContext";
 import type { BaseChartRef } from "../../components/charts/BaseChart";
 
 interface CSVDataPoint {
@@ -281,13 +282,15 @@ function Pairs() {
             }}
           >
             <div style={{ flex: 1, position: "relative" }}>
-              <BaseChart
-                ref={chartRef}
-                data={chartData}
-                onChartCreated={(newChart) => {
-                  console.log("Chart created:", newChart);
-                }}
-              />
+              <ChartProvider>
+                <BaseChart
+                  ref={chartRef}
+                  data={chartData}
+                  onChartCreated={(newChart) => {
+                    console.log("Chart created:", newChart);
+                  }}
+                />
+              </ChartProvider>
             </div>
           </div>
         </div>
