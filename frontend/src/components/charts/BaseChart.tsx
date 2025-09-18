@@ -25,10 +25,11 @@ interface BaseChartProps {
   width?: number;
   height?: number;
   onChartCreated?: (chart: HTMLDivElement) => void;
+  activeTool?: string;
 }
 
 const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
-  ({ data, onChartCreated }, ref) => {
+  ({ data, onChartCreated, activeTool = "none" }, ref) => {
     const chartRef = useRef<HTMLDivElement | null>(null);
     const chartInstance = useRef<Highcharts.Chart | null>(null);
     const { markers, addMarker, clearMarkers } = useContext(ChartContext)!;
@@ -313,7 +314,8 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
       };
 
       const handleClick = (e: MouseEvent) => {
-        if (!chartInstance.current) return;
+        console.log("Click detected, activeTool:", activeTool);
+        if (!chartInstance.current || activeTool !== "dot") return;
 
         const chart = chartInstance.current;
         const xAxis = chart.xAxis[0];
@@ -364,7 +366,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           chartElement.removeEventListener("click", handleClick);
         }
       };
-    }, []);
+    }, [activeTool]);
 
     return (
       <div style={{ position: "relative", width: "100%", height: "100%" }}>

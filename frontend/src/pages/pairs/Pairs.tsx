@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams } from "react-router";
 import BaseChart from "../../components/charts/BaseChart";
 import NavigationBar from "../../components/NavigationBar";
+import Sidebar from "../../components/charts/Sidebar";
 import { ChartProvider } from "../../components/charts/chartContext";
 import type { BaseChartRef } from "../../components/charts/BaseChart";
 
@@ -22,6 +23,7 @@ function Pairs() {
   const [error, setError] = useState<string | null>(null);
   const [currentPair, setCurrentPair] = useState(pair || "EURUSD");
   const chartRef = useRef<BaseChartRef>(null);
+  const [activeTool, setActiveTool] = useState<string>("none");
 
   useEffect(() => {
     const fetchCSVData = async () => {
@@ -135,6 +137,12 @@ function Pairs() {
     chartRef.current?.clearMarkers();
   };
 
+  const handleToggleDotMode = () => {
+    const newTool = activeTool === "none" ? "dot" : "none";
+    setActiveTool(newTool);
+    console.log("Active tool set to:", newTool);
+  };
+
   return (
     <div
       style={{
@@ -150,126 +158,12 @@ function Pairs() {
       />
       <div style={{ flex: 1, overflow: "hidden" }}>
         <div style={{ display: "flex", height: "100%", width: "100%" }}>
-          {/* Sidebar */}
-          <div
-            style={{
-              width: "48px",
-              padding: "8px",
-              borderRight: "1px solid #ccc",
-              backgroundColor: "#f5f5f5",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-            }}
-          >
-            {/* Chart Tools */}
-            <div style={{ marginBottom: "8px" }}>
-              <button
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  borderTop: "1px solid #ccc",
-                  borderRight: "1px solid #ccc",
-                  borderBottom: "1px solid #ccc",
-                  borderLeft: "1px solid #ccc",
-                  borderRadius: "4px",
-                  backgroundColor: "#fff",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "16px",
-                  margin: "2px",
-                }}
-                title="Crosshair"
-                onClick={handleToggleCrosshair}
-              >
-                ✚
-              </button>
-            </div>
-
-            {/* Essential Chart Controls */}
-            <div style={{ marginBottom: "8px" }}>
-              <button
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  borderTop: "1px solid #ccc",
-                  borderRight: "1px solid #ccc",
-                  borderBottom: "1px solid #ccc",
-                  borderLeft: "1px solid #ccc",
-                  borderRadius: "4px",
-                  backgroundColor: "#fff",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "16px",
-                  margin: "2px",
-                }}
-                title="Reset Zoom"
-                onClick={handleResetZoom}
-              >
-                🔄
-              </button>
-            </div>
-
-            {/* Marker Controls */}
-            <div style={{ marginBottom: "8px" }}>
-              <button
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  borderTop: "1px solid #ccc",
-                  borderRight: "1px solid #ccc",
-                  borderBottom: "1px solid #ccc",
-                  borderLeft: "1px solid #ccc",
-                  borderRadius: "4px",
-                  backgroundColor: "#fff",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "16px",
-                  margin: "2px",
-                }}
-                title="Clear All Markers"
-                onClick={handleClearMarkers}
-              >
-                🗑️
-              </button>
-            </div>
-
-            {/* Help */}
-            <div>
-              <button
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  borderTop: "1px solid #ccc",
-                  borderRight: "1px solid #ccc",
-                  borderBottom: "1px solid #ccc",
-                  borderLeft: "1px solid #ccc",
-                  borderRadius: "4px",
-                  backgroundColor: "#fff",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "16px",
-                  margin: "2px",
-                }}
-                title="Keyboard Shortcuts: + = Zoom In, - = Zoom Out, 0 = Reset, ← → = Pan"
-                onClick={() =>
-                  alert(
-                    "Keyboard Shortcuts:\n+ = Zoom In\n- = Zoom Out\n0 = Reset Zoom\n← → = Pan Left/Right"
-                  )
-                }
-              >
-                ❓
-              </button>
-            </div>
-          </div>
+          <Sidebar
+            onResetZoom={handleResetZoom}
+            onToggleCrosshair={handleToggleCrosshair}
+            onToggleDotMode={handleToggleDotMode}
+            onClearMarkers={handleClearMarkers}
+          />
 
           {/* Chart Area */}
           <div
@@ -286,6 +180,7 @@ function Pairs() {
                 <BaseChart
                   ref={chartRef}
                   data={chartData}
+                  activeTool={activeTool}
                   onChartCreated={(newChart) => {
                     console.log("Chart created:", newChart);
                   }}

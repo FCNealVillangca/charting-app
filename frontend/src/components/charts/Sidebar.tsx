@@ -3,11 +3,15 @@ import React from "react";
 interface SidebarProps {
   onResetZoom?: () => void;
   onToggleCrosshair?: () => void;
+  onToggleDotMode?: () => void;
+  onClearMarkers?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
   onResetZoom,
   onToggleCrosshair,
+  onToggleDotMode,
+  onClearMarkers,
 }) => {
   const buttonStyle = {
     width: "32px",
@@ -49,10 +53,32 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
+      {/* Dot Placement Tool */}
+      <div style={{ marginBottom: "8px" }}>
+        <button
+          style={buttonStyle}
+          title="Toggle Dot Placement"
+          onClick={onToggleDotMode}
+        >
+          •
+        </button>
+      </div>
+
       {/* Essential Chart Controls */}
       <div style={{ marginBottom: "8px" }}>
         <button style={buttonStyle} title="Reset Zoom" onClick={onResetZoom}>
           🔄
+        </button>
+      </div>
+
+      {/* Marker Controls */}
+      <div style={{ marginBottom: "8px" }}>
+        <button
+          style={buttonStyle}
+          title="Clear All Markers"
+          onClick={onClearMarkers}
+        >
+          🗑️
         </button>
       </div>
 

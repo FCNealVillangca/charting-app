@@ -11,6 +11,7 @@ interface ChartContainerProps {
 const ChartContainer: React.FC<ChartContainerProps> = ({ data }) => {
   const [, setChart] = React.useState<HTMLDivElement | null>(null);
   const chartRef = useRef<BaseChartRef>(null);
+  const [activeTool, setActiveTool] = React.useState<string>("none");
 
   const handleResetZoom = () => {
     console.log("Reset zoom clicked");
@@ -22,11 +23,16 @@ const ChartContainer: React.FC<ChartContainerProps> = ({ data }) => {
     alert("Crosshair functionality coming soon!");
   };
 
+  const handleToggleDotMode = () => {
+    setActiveTool(activeTool === "none" ? "dot" : "none");
+  };
+
   return (
     <div style={{ display: "flex", height: "100%", width: "100%" }}>
       <Sidebar
         onResetZoom={handleResetZoom}
         onToggleCrosshair={handleToggleCrosshair}
+        onToggleDotMode={handleToggleDotMode}
       />
       <div
         style={{
@@ -41,6 +47,7 @@ const ChartContainer: React.FC<ChartContainerProps> = ({ data }) => {
           <BaseChart
             ref={chartRef}
             data={data}
+            activeTool={activeTool}
             onChartCreated={(newChart) => {
               setChart(newChart);
             }}
