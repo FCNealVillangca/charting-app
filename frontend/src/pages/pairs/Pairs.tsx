@@ -130,6 +130,10 @@ function Pairs() {
     alert("Crosshair functionality coming soon!");
   };
 
+  const handleClearMarkers = () => {
+    chartRef.current?.clearMarkers();
+  };
+
   return (
     <div
       style={{
@@ -206,6 +210,32 @@ function Pairs() {
                 onClick={handleResetZoom}
               >
                 🔄
+              </button>
+            </div>
+
+            {/* Marker Controls */}
+            <div style={{ marginBottom: "8px" }}>
+              <button
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderTop: "1px solid #ccc",
+                  borderRight: "1px solid #ccc",
+                  borderBottom: "1px solid #ccc",
+                  borderLeft: "1px solid #ccc",
+                  borderRadius: "4px",
+                  backgroundColor: "#fff",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "16px",
+                  margin: "2px",
+                }}
+                title="Clear All Markers"
+                onClick={handleClearMarkers}
+              >
+                🗑️
               </button>
             </div>
 

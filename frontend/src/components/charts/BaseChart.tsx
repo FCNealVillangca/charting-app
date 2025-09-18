@@ -15,6 +15,7 @@ import type { DataPoint } from "./types";
 export interface BaseChartRef {
   resetZoom: () => void;
   getChart: () => Highcharts.Chart | null;
+  clearMarkers: () => void;
 }
 
 interface BaseChartProps {
@@ -34,6 +35,10 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
       y: number;
       data: DataPoint | null;
     }>({ visible: false, x: 0, y: 0, data: null });
+
+    const [markers, setMarkers] = useState<
+      Array<{ x: number; y: number; id: string }>
+    >([]);
 
     const chartData = useMemo(() => {
       const seen = new Map<number, DataPoint>();
@@ -133,6 +138,20 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
             colorByPoint: false,
             showInLegend: false,
           } as Highcharts.SeriesCandlestickOptions,
+          {
+            type: "scatter",
+            name: "Markers",
+            data: markers.map((marker) => [marker.x, marker.y]),
+            color: "#ff6b35",
+            marker: {
+              radius: 4,
+              fillColor: "#ff6b35",
+              lineColor: "#fff",
+              lineWidth: 2,
+            },
+            showInLegend: false,
+            enableMouseTracking: true,
+          } as Highcharts.SeriesScatterOptions,
         ],
         plotOptions: {
           candlestick: {
@@ -176,7 +195,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           enabled: false,
         },
       }),
-      [highchartsData]
+      [highchartsData, markers, chartData]
     );
 
     const resetZoom = () => {
@@ -185,9 +204,15 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
       }
     };
 
+    const clearMarkers = () => {
+      setMarkers([]);
+      console.log("All markers cleared");
+    };
+
     useImperativeHandle(ref, () => ({
       resetZoom,
       getChart: () => chartInstance.current,
+      clearMarkers,
     }));
 
     useEffect(() => {
@@ -293,15 +318,46 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         setTooltipData({ visible: false, x: 0, y: 0, data: null });
       };
 
+      const handleClick = (e: MouseEvent) => {
+        if (!chartInstance.current) return;
+
+        const chart = chartInstance.current;
+        const xAxis = chart.xAxis[0];
+        const yAxis = chart.yAxis[0];
+
+        // Get mouse position relative to chart
+        const rect = chart.renderTo.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        // Convert to axis values
+        const xValue = xAxis.toValue(x);
+        const yValue = yAxis.toValue(y);
+
+        // Create a new marker
+        const newMarker = {
+          x: xValue,
+          y: yValue,
+          id: `marker_${Date.now()}_${Math.random()}`,
+        };
+
+        setMarkers((prev) => [...prev, newMarker]);
+
+        console.log(
+          `Placed dot at: X=${xValue.toFixed(2)}, Y=${yValue.toFixed(5)}`
+        );
+      };
+
       window.addEventListener("resize", handleResize);
       window.addEventListener("keydown", handleKeyDown);
 
-      // Add wheel event listener to the chart container
+      // Add event listeners to the chart container
       const chartElement = chartRef.current;
       if (chartElement) {
         chartElement.addEventListener("wheel", handleWheel, { passive: false });
         chartElement.addEventListener("mousemove", handleMouseMove);
         chartElement.addEventListener("mouseleave", handleMouseLeave);
+        chartElement.addEventListener("click", handleClick);
       }
 
       return () => {
@@ -311,6 +367,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           chartElement.removeEventListener("wheel", handleWheel);
           chartElement.removeEventListener("mousemove", handleMouseMove);
           chartElement.removeEventListener("mouseleave", handleMouseLeave);
+          chartElement.removeEventListener("click", handleClick);
         }
       };
     }, []);
