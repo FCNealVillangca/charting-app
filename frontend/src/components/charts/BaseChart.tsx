@@ -4,6 +4,7 @@ import {
   useImperativeHandle,
   forwardRef,
   useEffect,
+  useState,
 } from "react";
 import Highcharts from "highcharts";
 import "highcharts/highcharts-more";
@@ -27,6 +28,12 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
   ({ data, onChartCreated }, ref) => {
     const chartRef = useRef<HTMLDivElement | null>(null);
     const chartInstance = useRef<Highcharts.Chart | null>(null);
+    const [tooltipData, setTooltipData] = useState<{
+      visible: boolean;
+      x: number;
+      y: number;
+      data: DataPoint | null;
+    }>({ visible: false, x: 0, y: 0, data: null });
 
     const chartData = useMemo(() => {
       const seen = new Map<number, DataPoint>();
@@ -48,8 +55,8 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
 
     const highchartsData = useMemo(() => {
       if (chartData.length === 0) return [];
-      return chartData.map((d) => [
-        d.time * 1000, // Convert to milliseconds for Highcharts
+      return chartData.map((d, index) => [
+        index, // Use index instead of time to avoid gaps
         d.open,
         d.high,
         d.low,
@@ -69,18 +76,35 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
             enabled: true,
             type: "x", // Enable panning on x-axis only (time)
           },
+          panKey: "shift", // Hold Shift key to pan instead of zoom
+          resetZoomButton: null, // Completely remove the reset zoom button
         },
         title: {
           text: "",
         },
         xAxis: {
-          type: "datetime",
+          type: "linear",
           labels: {
-            format: "{value:%m/%d}",
+            formatter: function () {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const index = (this as any).value;
+              if (index >= 0 && index < chartData.length) {
+                const date = new Date(chartData[index].time * 1000);
+                return date.toLocaleDateString();
+              }
+              return "";
+            },
           },
           gridLineWidth: 1,
           gridLineColor: "#e0e0e0",
-          minRange: 24 * 3600 * 1000, // Minimum zoom range (1 day)
+          minRange: 100, // Minimum zoom range (100 data points)
+          crosshair: {
+            enabled: true,
+            color: "#666",
+            width: 1,
+            dashStyle: "dash",
+            zIndex: 4,
+          },
         },
         yAxis: {
           title: {
@@ -89,6 +113,13 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           gridLineWidth: 1,
           gridLineColor: "#e0e0e0",
           minRange: 0.1, // Minimum zoom range for price
+          crosshair: {
+            enabled: true,
+            color: "#666",
+            width: 1,
+            dashStyle: "dash",
+            zIndex: 4,
+          },
         },
         series: [
           {
@@ -127,19 +158,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           enabled: false,
         },
         tooltip: {
-          enabled: true,
-          formatter: function () {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const context = this as any;
-            const point = context.point;
-            return `
-            <b>${new Date(point.x).toLocaleDateString()}</b><br/>
-            Open: ${point.open}<br/>
-            High: ${point.high}<br/>
-            Low: ${point.low}<br/>
-            Close: ${point.close}
-          `;
-          },
+          enabled: false, // Disable the default tooltip
         },
         rangeSelector: {
           enabled: false,
@@ -202,9 +221,97 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         }
       };
 
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (!chartInstance.current) return;
+
+        const xAxis = chartInstance.current.xAxis[0];
+        const extremes = xAxis.getExtremes();
+        const panStep = (extremes.max - extremes.min) / 10; // Pan 10% of current range
+
+        switch (e.key) {
+          case "ArrowLeft":
+            e.preventDefault();
+            xAxis.setExtremes(extremes.min - panStep, extremes.max - panStep);
+            break;
+          case "ArrowRight":
+            e.preventDefault();
+            xAxis.setExtremes(extremes.min + panStep, extremes.max + panStep);
+            break;
+          case "Home":
+            e.preventDefault();
+            // Reset to show all data
+            xAxis.setExtremes(null, null);
+            break;
+        }
+      };
+
+      const handleWheel = (e: WheelEvent) => {
+        if (!chartInstance.current) return;
+
+        // Check if Shift key is held down
+        if (e.shiftKey) {
+          e.preventDefault();
+
+          const xAxis = chartInstance.current.xAxis[0];
+          const extremes = xAxis.getExtremes();
+          const panStep = (extremes.max - extremes.min) / 20; // Pan 5% of current range
+
+          // Determine pan direction based on wheel delta
+          const panAmount = e.deltaY > 0 ? panStep : -panStep;
+
+          xAxis.setExtremes(extremes.min + panAmount, extremes.max + panAmount);
+        }
+      };
+
+      const handleMouseMove = (e: MouseEvent) => {
+        if (!chartInstance.current) return;
+
+        const chart = chartInstance.current;
+        const xAxis = chart.xAxis[0];
+
+        // Get mouse position relative to chart
+        const rect = chart.renderTo.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+
+        // Convert to axis values
+        const xValue = xAxis.toValue(x);
+
+        // Find closest data point
+        const index = Math.round(xValue);
+        if (index >= 0 && index < chartData.length) {
+          const dataPoint = chartData[index];
+          setTooltipData({
+            visible: true,
+            x: rect.left + 10, // Upper left of chart
+            y: rect.top + 10,
+            data: dataPoint,
+          });
+        }
+      };
+
+      const handleMouseLeave = () => {
+        setTooltipData({ visible: false, x: 0, y: 0, data: null });
+      };
+
       window.addEventListener("resize", handleResize);
+      window.addEventListener("keydown", handleKeyDown);
+
+      // Add wheel event listener to the chart container
+      const chartElement = chartRef.current;
+      if (chartElement) {
+        chartElement.addEventListener("wheel", handleWheel, { passive: false });
+        chartElement.addEventListener("mousemove", handleMouseMove);
+        chartElement.addEventListener("mouseleave", handleMouseLeave);
+      }
+
       return () => {
         window.removeEventListener("resize", handleResize);
+        window.removeEventListener("keydown", handleKeyDown);
+        if (chartElement) {
+          chartElement.removeEventListener("wheel", handleWheel);
+          chartElement.removeEventListener("mousemove", handleMouseMove);
+          chartElement.removeEventListener("mouseleave", handleMouseLeave);
+        }
       };
     }, []);
 
@@ -214,6 +321,98 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           ref={chartRef}
           style={{ position: "relative", width: "100%", height: "100%" }}
         />
+        {tooltipData.visible && tooltipData.data && (
+          <div
+            style={{
+              position: "fixed",
+              left: tooltipData.x,
+              top: tooltipData.y,
+              backgroundColor: "rgba(0, 0, 0, 0.8)",
+              border: "1px solid #333",
+              borderRadius: "4px",
+              padding: "8px",
+              minWidth: "120px",
+              color: "#fff",
+              fontSize: "12px",
+              fontFamily: "monospace",
+              zIndex: 1000,
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              style={{ fontWeight: "bold", marginBottom: "4px", color: "#fff" }}
+            >
+              {new Date(tooltipData.data.time * 1000).toLocaleDateString(
+                "en-US",
+                {
+                  month: "short",
+                  day: "numeric",
+                }
+              )}{" "}
+              {new Date(tooltipData.data.time * 1000).toLocaleTimeString(
+                "en-US",
+                {
+                  hour12: false,
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }
+              )}
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                margin: "2px 0",
+              }}
+            >
+              <span style={{ color: "#888" }}>O:</span>
+              <span style={{ color: "#fff" }}>
+                {tooltipData.data.open.toFixed(5)}
+              </span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                margin: "2px 0",
+              }}
+            >
+              <span style={{ color: "#888" }}>H:</span>
+              <span style={{ color: "#4caf50" }}>
+                {tooltipData.data.high.toFixed(5)}
+              </span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                margin: "2px 0",
+              }}
+            >
+              <span style={{ color: "#888" }}>L:</span>
+              <span style={{ color: "#f44336" }}>
+                {tooltipData.data.low.toFixed(5)}
+              </span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                margin: "2px 0",
+              }}
+            >
+              <span style={{ color: "#888" }}>C:</span>
+              <span style={{ color: "#fff" }}>
+                {tooltipData.data.close.toFixed(5)}
+              </span>
+            </div>
+          </div>
+        )}
+        <style>{`
+          .highcharts-reset-zoom {
+            display: none !important;
+          }
+        `}</style>
       </div>
     );
   }

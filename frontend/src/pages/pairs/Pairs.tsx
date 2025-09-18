@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams } from "react-router";
-import ChartContainer from "../../components/charts/ChartContainer";
+import BaseChart from "../../components/charts/BaseChart";
 import NavigationBar from "../../components/NavigationBar";
+import type { BaseChartRef } from "../../components/charts/BaseChart";
 
 interface CSVDataPoint {
   date: Date;
@@ -19,6 +20,7 @@ function Pairs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPair, setCurrentPair] = useState(pair || "EURUSD");
+  const chartRef = useRef<BaseChartRef>(null);
 
   useEffect(() => {
     const fetchCSVData = async () => {
@@ -118,6 +120,16 @@ function Pairs() {
     // For now, we'll just update the state
   };
 
+  const handleResetZoom = () => {
+    console.log("Reset zoom clicked");
+    chartRef.current?.resetZoom();
+  };
+
+  const handleToggleCrosshair = () => {
+    // Simple crosshair toggle - just show an alert for now
+    alert("Crosshair functionality coming soon!");
+  };
+
   return (
     <div
       style={{
@@ -132,7 +144,123 @@ function Pairs() {
         onPairChange={handlePairChange}
       />
       <div style={{ flex: 1, overflow: "hidden" }}>
-        <ChartContainer data={chartData} />
+        <div style={{ display: "flex", height: "100%", width: "100%" }}>
+          {/* Sidebar */}
+          <div
+            style={{
+              width: "48px",
+              padding: "8px",
+              borderRight: "1px solid #ccc",
+              backgroundColor: "#f5f5f5",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            {/* Chart Tools */}
+            <div style={{ marginBottom: "8px" }}>
+              <button
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderTop: "1px solid #ccc",
+                  borderRight: "1px solid #ccc",
+                  borderBottom: "1px solid #ccc",
+                  borderLeft: "1px solid #ccc",
+                  borderRadius: "4px",
+                  backgroundColor: "#fff",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "16px",
+                  margin: "2px",
+                }}
+                title="Crosshair"
+                onClick={handleToggleCrosshair}
+              >
+                ✚
+              </button>
+            </div>
+
+            {/* Essential Chart Controls */}
+            <div style={{ marginBottom: "8px" }}>
+              <button
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderTop: "1px solid #ccc",
+                  borderRight: "1px solid #ccc",
+                  borderBottom: "1px solid #ccc",
+                  borderLeft: "1px solid #ccc",
+                  borderRadius: "4px",
+                  backgroundColor: "#fff",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "16px",
+                  margin: "2px",
+                }}
+                title="Reset Zoom"
+                onClick={handleResetZoom}
+              >
+                🔄
+              </button>
+            </div>
+
+            {/* Help */}
+            <div>
+              <button
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderTop: "1px solid #ccc",
+                  borderRight: "1px solid #ccc",
+                  borderBottom: "1px solid #ccc",
+                  borderLeft: "1px solid #ccc",
+                  borderRadius: "4px",
+                  backgroundColor: "#fff",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "16px",
+                  margin: "2px",
+                }}
+                title="Keyboard Shortcuts: + = Zoom In, - = Zoom Out, 0 = Reset, ← → = Pan"
+                onClick={() =>
+                  alert(
+                    "Keyboard Shortcuts:\n+ = Zoom In\n- = Zoom Out\n0 = Reset Zoom\n← → = Pan Left/Right"
+                  )
+                }
+              >
+                ❓
+              </button>
+            </div>
+          </div>
+
+          {/* Chart Area */}
+          <div
+            style={{
+              flex: 1,
+              marginLeft: "8px",
+              position: "relative",
+              height: "100%",
+              display: "flex",
+            }}
+          >
+            <div style={{ flex: 1, position: "relative" }}>
+              <BaseChart
+                ref={chartRef}
+                data={chartData}
+                onChartCreated={(newChart) => {
+                  console.log("Chart created:", newChart);
+                }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
