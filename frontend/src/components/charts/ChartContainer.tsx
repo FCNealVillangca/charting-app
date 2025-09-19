@@ -1,8 +1,8 @@
-import React, { useRef } from "react";
+import React, { useContext } from "react";
 import BaseChart from "./BaseChart";
 import Sidebar from "./Sidebar";
 import type { DataPoint } from "./types";
-import type { BaseChartRef } from "./BaseChart";
+import { ChartContext } from "./chartContext";
 
 interface ChartContainerProps {
   data: DataPoint[];
@@ -10,29 +10,28 @@ interface ChartContainerProps {
 
 const ChartContainer: React.FC<ChartContainerProps> = ({ data }) => {
   const [, setChart] = React.useState<HTMLDivElement | null>(null);
-  const chartRef = useRef<BaseChartRef>(null);
-  const [activeTool, setActiveTool] = React.useState<string>("none");
+  const chartContext = useContext(ChartContext);
 
-  const handleResetZoom = () => {
-    console.log("Reset zoom clicked");
-    chartRef.current?.resetZoom();
-  };
+  if (!chartContext) {
+    throw new Error("ChartContainer must be used within a ChartProvider");
+  }
 
-  const handleToggleCrosshair = () => {
-    // Simple crosshair toggle - just show an alert for now
-    alert("Crosshair functionality coming soon!");
-  };
-
-  const handleToggleDotMode = () => {
-    setActiveTool(activeTool === "none" ? "dot" : "none");
-  };
+  const {
+    chartRef,
+    activeTool,
+    clearMarkers,
+    resetZoom,
+    toggleCrosshair,
+    toggleDotMode,
+  } = chartContext;
 
   return (
     <div style={{ display: "flex", height: "100%", width: "100%" }}>
       <Sidebar
-        onResetZoom={handleResetZoom}
-        onToggleCrosshair={handleToggleCrosshair}
-        onToggleDotMode={handleToggleDotMode}
+        onResetZoom={resetZoom}
+        onToggleCrosshair={toggleCrosshair}
+        onToggleDotMode={toggleDotMode}
+        onClearMarkers={clearMarkers}
       />
       <div
         style={{

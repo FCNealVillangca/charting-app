@@ -1,10 +1,8 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router";
-import BaseChart from "../../components/charts/BaseChart";
 import NavigationBar from "../../components/NavigationBar";
-import Sidebar from "../../components/charts/Sidebar";
 import { ChartProvider } from "../../components/charts/chartContext";
-import type { BaseChartRef } from "../../components/charts/BaseChart";
+import ChartContainer from "../../components/charts/ChartContainer";
 
 interface CSVDataPoint {
   date: Date;
@@ -22,8 +20,6 @@ function Pairs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPair, setCurrentPair] = useState(pair || "EURUSD");
-  const chartRef = useRef<BaseChartRef>(null);
-  const [activeTool, setActiveTool] = useState<string>("none");
 
   useEffect(() => {
     const fetchCSVData = async () => {
@@ -123,26 +119,6 @@ function Pairs() {
     // For now, we'll just update the state
   };
 
-  const handleResetZoom = () => {
-    console.log("Reset zoom clicked");
-    chartRef.current?.resetZoom();
-  };
-
-  const handleToggleCrosshair = () => {
-    // Simple crosshair toggle - just show an alert for now
-    alert("Crosshair functionality coming soon!");
-  };
-
-  const handleClearMarkers = () => {
-    chartRef.current?.clearMarkers();
-  };
-
-  const handleToggleDotMode = () => {
-    const newTool = activeTool === "none" ? "dot" : "none";
-    setActiveTool(newTool);
-    console.log("Active tool set to:", newTool);
-  };
-
   return (
     <div
       style={{
@@ -157,38 +133,9 @@ function Pairs() {
         onPairChange={handlePairChange}
       />
       <div style={{ flex: 1, overflow: "hidden" }}>
-        <div style={{ display: "flex", height: "100%", width: "100%" }}>
-          <Sidebar
-            onResetZoom={handleResetZoom}
-            onToggleCrosshair={handleToggleCrosshair}
-            onToggleDotMode={handleToggleDotMode}
-            onClearMarkers={handleClearMarkers}
-          />
-
-          {/* Chart Area */}
-          <div
-            style={{
-              flex: 1,
-              marginLeft: "8px",
-              position: "relative",
-              height: "100%",
-              display: "flex",
-            }}
-          >
-            <div style={{ flex: 1, position: "relative" }}>
-              <ChartProvider>
-                <BaseChart
-                  ref={chartRef}
-                  data={chartData}
-                  activeTool={activeTool}
-                  onChartCreated={(newChart) => {
-                    console.log("Chart created:", newChart);
-                  }}
-                />
-              </ChartProvider>
-            </div>
-          </div>
-        </div>
+        <ChartProvider>
+          <ChartContainer data={chartData} />
+        </ChartProvider>
       </div>
     </div>
   );
