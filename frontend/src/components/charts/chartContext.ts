@@ -11,7 +11,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [series, setSeries] = useState<Series[]>([]);
-  const [selectedSeries, setSelectedSeries] = useState<string | null>(null);
+  const [selectedPoint, setSelectedPoint] = useState<{ seriesId: string; pointId: string } | null>(null);
   const [activeTool, setActiveTool] = useState<string>("none");
   const chartRef = useRef<BaseChartRef>(null);
 
@@ -21,19 +21,19 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
 
   const clearSeries = () => {
     setSeries([]);
-    setSelectedSeries(null);
+    setSelectedPoint(null);
   };
 
   const findPoints = (x: number, y: number) => {
-    const found = series.find((s) =>
-      s.points.some((p) => Math.abs(p.x - x) < 0.01 && Math.abs(p.y - y) < 0.01)
-    );
-    if (found) {
-      console.log(found);
-      setSelectedSeries(found.id);
-    } else {
-      setSelectedSeries(null);
+    for (const s of series) {
+      const point = s.points.find((p) => Math.abs(p.x - x) < 2 && Math.abs(p.y - y) < 0.1);
+      if (point) {
+        console.log(s, point);
+        setSelectedPoint({ seriesId: s.id, pointId: point.id });
+        return;
+      }
     }
+    setSelectedPoint(null);
   };
 
   const resetZoom = () => {
@@ -57,8 +57,8 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         series,
         addSeries,
         clearSeries,
-        selectedSeries,
-        setSelectedSeries,
+        selectedPoint,
+        setSelectedPoint,
         findPoints,
         chartRef,
         activeTool,

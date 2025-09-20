@@ -315,8 +315,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         setTooltipData({ visible: false, x: 0, y: 0, data: null });
       };
 
-      const handleClick = (e: MouseEvent) => {
-        console.log(series);
+      const handleMouseDown = (e: MouseEvent) => {
         if (!chartInstance.current) return;
 
         const chart = chartInstance.current;
@@ -332,17 +331,24 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         const xValue = xAxis.toValue(x);
         const yValue = yAxis.toValue(y);
 
+        // Always find and select series at the point
+        findPoints(xValue, yValue);
+
         if (activeTool === "dot") {
           // Create a new series
           const newSeries = {
             id: `series_${Date.now()}_${Math.random()}`,
-            points: [{ x: xValue, y: yValue }],
+            points: [
+              {
+                id: `point_${Date.now()}_${Math.random()}`,
+                x: xValue,
+                y: yValue,
+              },
+            ],
           };
 
+          console.log(newSeries);
           addSeries(newSeries);
-        } else {
-          // Find existing series
-          findPoints(xValue, yValue);
         }
       };
 
@@ -355,7 +361,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         chartElement.addEventListener("wheel", handleWheel, { passive: false });
         chartElement.addEventListener("mousemove", handleMouseMove);
         chartElement.addEventListener("mouseleave", handleMouseLeave);
-        chartElement.addEventListener("click", handleClick);
+        chartElement.addEventListener("mousedown", handleMouseDown);
       }
 
       return () => {
@@ -365,10 +371,15 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           chartElement.removeEventListener("wheel", handleWheel);
           chartElement.removeEventListener("mousemove", handleMouseMove);
           chartElement.removeEventListener("mouseleave", handleMouseLeave);
-          chartElement.removeEventListener("click", handleClick);
+          chartElement.removeEventListener("mousedown", handleMouseDown);
         }
       };
     }, [activeTool, series]);
+
+    // Debug: Log series changes
+    useEffect(() => {
+      console.log("Series updated:", series);
+    }, [series]);
 
     return (
       <div style={{ position: "relative", width: "100%", height: "100%" }}>
