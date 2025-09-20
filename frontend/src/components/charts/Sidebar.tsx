@@ -4,14 +4,14 @@ interface SidebarProps {
   onResetZoom?: () => void;
   onToggleCrosshair?: () => void;
   onToggleDotMode?: () => void;
-  onClearMarkers?: () => void;
+  onClearSeries?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
   onResetZoom,
   onToggleCrosshair,
   onToggleDotMode,
-  onClearMarkers,
+  onClearSeries,
 }) => {
   const buttonStyle = {
     width: "32px",
@@ -71,12 +71,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      {/* Marker Controls */}
+      {/* Series Controls */}
       <div style={{ marginBottom: "8px" }}>
         <button
           style={buttonStyle}
-          title="Clear All Markers"
-          onClick={onClearMarkers}
+          title="Clear All Series"
+          onClick={onClearSeries}
         >
           🗑️
         </button>

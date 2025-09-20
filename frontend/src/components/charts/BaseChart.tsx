@@ -17,7 +17,7 @@ import { ChartContext } from "./chartContext";
 export interface BaseChartRef {
   resetZoom: () => void;
   getChart: () => Highcharts.Chart | null;
-  clearMarkers: () => void;
+  clearSeries: () => void;
 }
 
 interface BaseChartProps {
@@ -32,7 +32,8 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
   ({ data, onChartCreated, activeTool = "none" }, ref) => {
     const chartRef = useRef<HTMLDivElement | null>(null);
     const chartInstance = useRef<Highcharts.Chart | null>(null);
-    const { markers, addMarker, clearMarkers } = useContext(ChartContext)!;
+    const { series, addSeries, clearSeries, findPoints } =
+      useContext(ChartContext)!;
     const [tooltipData, setTooltipData] = useState<{
       visible: boolean;
       x: number;
@@ -84,6 +85,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           panKey: "shift", // Hold Shift key to pan instead of zoom
           resetZoomButton: null, // Completely remove the reset zoom button
         },
+
         title: {
           text: "",
         },
@@ -140,8 +142,8 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           } as Highcharts.SeriesCandlestickOptions,
           {
             type: "scatter",
-            name: "Markers",
-            data: markers.map((marker) => [marker.x, marker.y]),
+            name: "Series",
+            data: series.flatMap((s) => s.points.map((p) => [p.x, p.y])),
             color: "#ff6b35",
             marker: {
               radius: 4,
@@ -195,7 +197,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           enabled: false,
         },
       }),
-      [highchartsData, markers, chartData]
+      [highchartsData, series, chartData]
     );
 
     const resetZoom = () => {
@@ -207,7 +209,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
     useImperativeHandle(ref, () => ({
       resetZoom,
       getChart: () => chartInstance.current,
-      clearMarkers,
+      clearSeries,
     }));
 
     useEffect(() => {
@@ -314,8 +316,8 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
       };
 
       const handleClick = (e: MouseEvent) => {
-        console.log("Click detected, activeTool:", activeTool);
-        if (!chartInstance.current || activeTool !== "dot") return;
+        console.log(series);
+        if (!chartInstance.current) return;
 
         const chart = chartInstance.current;
         const xAxis = chart.xAxis[0];
@@ -330,18 +332,18 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         const xValue = xAxis.toValue(x);
         const yValue = yAxis.toValue(y);
 
-        // Create a new marker
-        const newMarker = {
-          x: xValue,
-          y: yValue,
-          id: `marker_${Date.now()}_${Math.random()}`,
-        };
+        if (activeTool === "dot") {
+          // Create a new series
+          const newSeries = {
+            id: `series_${Date.now()}_${Math.random()}`,
+            points: [{ x: xValue, y: yValue }],
+          };
 
-        addMarker(newMarker);
-
-        console.log(
-          `Placed dot at: X=${xValue.toFixed(2)}, Y=${yValue.toFixed(5)}`
-        );
+          addSeries(newSeries);
+        } else {
+          // Find existing series
+          findPoints(xValue, yValue);
+        }
       };
 
       window.addEventListener("resize", handleResize);
@@ -366,7 +368,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           chartElement.removeEventListener("click", handleClick);
         }
       };
-    }, [activeTool]);
+    }, [activeTool, series]);
 
     return (
       <div style={{ position: "relative", width: "100%", height: "100%" }}>

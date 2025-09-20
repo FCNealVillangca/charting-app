@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router";
 import NavigationBar from "../../components/NavigationBar";
-import { ChartProvider } from "../../components/charts/chartContext";
 import ChartContainer from "../../components/charts/ChartContainer";
 
 interface CSVDataPoint {
@@ -133,9 +132,7 @@ function Pairs() {
         onPairChange={handlePairChange}
       />
       <div style={{ flex: 1, overflow: "hidden" }}>
-        <ChartProvider>
-          <ChartContainer data={chartData} />
-        </ChartProvider>
+        <ChartContainer data={chartData} />
       </div>
     </div>
   );

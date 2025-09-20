@@ -19,7 +19,7 @@ const ChartContainer: React.FC<ChartContainerProps> = ({ data }) => {
   const {
     chartRef,
     activeTool,
-    clearMarkers,
+    clearSeries,
     resetZoom,
     toggleCrosshair,
     toggleDotMode,
@@ -31,7 +31,7 @@ const ChartContainer: React.FC<ChartContainerProps> = ({ data }) => {
         onResetZoom={resetZoom}
         onToggleCrosshair={toggleCrosshair}
         onToggleDotMode={toggleDotMode}
-        onClearMarkers={clearMarkers}
+        onClearSeries={clearSeries}
       />
       <div
         style={{

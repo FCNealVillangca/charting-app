@@ -1,15 +1,17 @@
 import type { BaseChartRef } from "./BaseChart";
 
-export interface Marker {
+export interface Series {
   id: string;
-  x: number;
-  y: number;
+  points: { x: number; y: number }[];
 }
 
 export interface ChartContextType {
-  markers: Marker[];
-  addMarker: (marker: Marker) => void;
-  clearMarkers: () => void;
+  series: Series[];
+  addSeries: (series: Series) => void;
+  clearSeries: () => void;
+  selectedSeries: string | null;
+  setSelectedSeries: (id: string | null) => void;
+  findPoints: (x: number, y: number) => void;
   chartRef: React.RefObject<BaseChartRef | null>;
   activeTool: string;
   setActiveTool: (tool: string) => void;

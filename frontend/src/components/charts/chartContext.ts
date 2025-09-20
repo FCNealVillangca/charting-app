@@ -2,7 +2,7 @@ import { createContext, useRef } from "react";
 import React, { useState } from "react";
 import type { ReactNode } from "react";
 import type { ChartContextType } from "./chartTypes";
-import type { Marker } from "./chartTypes";
+import type { Series } from "./chartTypes";
 import type { BaseChartRef } from "./BaseChart";
 
 export const ChartContext = createContext<ChartContextType | undefined>(undefined);
@@ -10,16 +10,30 @@ export const ChartContext = createContext<ChartContextType | undefined>(undefine
 export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [markers, setMarkers] = useState<Marker[]>([]);
+  const [series, setSeries] = useState<Series[]>([]);
+  const [selectedSeries, setSelectedSeries] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<string>("none");
   const chartRef = useRef<BaseChartRef>(null);
 
-  const addMarker = (marker: Marker) => {
-    setMarkers((prev) => [...prev, marker]);
+  const addSeries = (series: Series) => {
+    setSeries((prev) => [...prev, series]);
   };
 
-  const clearMarkers = () => {
-    setMarkers([]);
+  const clearSeries = () => {
+    setSeries([]);
+    setSelectedSeries(null);
+  };
+
+  const findPoints = (x: number, y: number) => {
+    const found = series.find((s) =>
+      s.points.some((p) => Math.abs(p.x - x) < 0.01 && Math.abs(p.y - y) < 0.01)
+    );
+    if (found) {
+      console.log(found);
+      setSelectedSeries(found.id);
+    } else {
+      setSelectedSeries(null);
+    }
   };
 
   const resetZoom = () => {
@@ -39,17 +53,20 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   return React.createElement(
     ChartContext.Provider,
     { 
-      value: { 
-        markers, 
-        addMarker, 
-        clearMarkers,
+      value: {
+        series,
+        addSeries,
+        clearSeries,
+        selectedSeries,
+        setSelectedSeries,
+        findPoints,
         chartRef,
         activeTool,
         setActiveTool,
         resetZoom,
         toggleCrosshair,
         toggleDotMode
-      } 
+      }
     },
     children
   );
