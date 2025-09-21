@@ -1,6 +1,7 @@
 import React, { useContext } from "react";
 import BaseChart from "./BaseChart";
 import Sidebar from "./Sidebar";
+import SeriesSidebar from "./SeriesSidebar";
 import type { DataPoint } from "./types";
 import { ChartContext } from "./chartContext";
 
@@ -28,6 +29,7 @@ const ChartContainer: React.FC<ChartContainerProps> = ({ data }) => {
   return (
     <div style={{ display: "flex", height: "100%", width: "100%" }}>
       <Sidebar
+        activeTool={activeTool}
         onResetZoom={resetZoom}
         onToggleCrosshair={toggleCrosshair}
         onToggleDotMode={toggleDotMode}
@@ -52,6 +54,7 @@ const ChartContainer: React.FC<ChartContainerProps> = ({ data }) => {
             }}
           />
         </div>
+        <SeriesSidebar />
       </div>
     </div>
   );

@@ -37,10 +37,10 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
       addSeries,
       clearSeries,
       updatePoint,
-      selectedPoint,
+      selectedData,
+      setSelectedData,
       findPoints,
     } = useContext(ChartContext)!;
-    const [isDragging, setIsDragging] = useState(false);
     const [tooltipData, setTooltipData] = useState<{
       visible: boolean;
       x: number;
@@ -84,7 +84,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           type: "candlestick",
           backgroundColor: "transparent",
           animation: false,
-          zoomType: "x", // Enable zoom on x-axis only (time)
+          zoomType: false, // Disable zoom
           panning: {
             enabled: true,
             type: "x", // Enable panning on x-axis only (time)
@@ -297,6 +297,42 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
 
         const chart = chartInstance.current;
         const xAxis = chart.xAxis[0];
+
+        // Get mouse position relative to chart
+        const rect = chart.container.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+
+        // Show tooltip
+        const xValue = xAxis.toValue(x);
+        const index = Math.round(xValue);
+        if (index >= 0 && index < chartData.length) {
+          const dataPoint = chartData[index];
+          setTooltipData({
+            visible: true,
+            x: rect.left + 10, // Upper left of chart
+            y: rect.top + 10,
+            data: dataPoint,
+          });
+        }
+
+        // Set cursor
+        if (selectedData) {
+          document.body.style.cursor = "grab";
+        } else {
+          document.body.style.cursor = "";
+        }
+      };
+
+      const handleMouseLeave = () => {
+        setTooltipData({ visible: false, x: 0, y: 0, data: null });
+        document.body.style.cursor = "";
+      };
+
+      const handleMouseUp = (e: MouseEvent) => {
+        if (!chartInstance.current || !selectedData) return;
+
+        const chart = chartInstance.current;
+        const xAxis = chart.xAxis[0];
         const yAxis = chart.yAxis[0];
 
         // Get mouse position relative to chart
@@ -304,39 +340,19 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        if (isDragging && selectedPoint) {
-          // Update the selected point position
-          const xValue = xAxis.toValue(x);
-          const yValue = yAxis.toValue(y);
-          updatePoint(
-            selectedPoint.seriesId,
-            selectedPoint.pointId,
-            xValue,
-            yValue
-          );
-        } else {
-          // Show tooltip
-          const xValue = xAxis.toValue(x);
-          const index = Math.round(xValue);
-          if (index >= 0 && index < chartData.length) {
-            const dataPoint = chartData[index];
-            setTooltipData({
-              visible: true,
-              x: rect.left + 10, // Upper left of chart
-              y: rect.top + 10,
-              data: dataPoint,
-            });
-          }
-        }
-      };
+        // Convert to axis values
+        const xValue = xAxis.toValue(x);
+        const yValue = yAxis.toValue(y);
 
-      const handleMouseLeave = () => {
-        setTooltipData({ visible: false, x: 0, y: 0, data: null });
-      };
-
-      const handleMouseUp = () => {
-        setIsDragging(false);
-        document.body.style.cursor = "";
+        // Update the selected point position and deselect
+        updatePoint(
+          selectedData.seriesId,
+          selectedData.pointId,
+          xValue,
+          yValue
+        );
+        setSelectedData(null);
+        e.preventDefault(); // Prevent zoom
       };
 
       const handleMouseDown = (e: MouseEvent) => {
@@ -354,18 +370,21 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         // Convert to axis values
         const xValue = xAxis.toValue(x);
         const yValue = yAxis.toValue(y);
+        const foundPoint = findPoints(xValue, yValue);
+        console.log("foundPoint", foundPoint);
+        console.log("selectedData", selectedData);
+        console.log("activeTool", activeTool);
 
-        // Find and select series at the point if none selected
-        if (!selectedPoint) {
-          findPoints(xValue, yValue);
-        }
-
-        if (selectedPoint) {
-          // Start dragging
-          setIsDragging(true);
-          // Change cursor to grabbing
-          document.body.style.cursor = "grabbing";
+        if (activeTool === "none" || activeTool === null) {
+          e.preventDefault(); // Prevent zoom selection
+          if (!selectedData) {
+            // Find and select series at the point
+            if (foundPoint) {
+              setSelectedData(foundPoint);
+            }
+          }
         } else if (activeTool === "dot") {
+          e.preventDefault(); // Prevent zoom
           // Create a new series
           const newSeries = {
             id: `series_${Date.now()}_${Math.random()}`,
@@ -407,7 +426,16 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           chartElement.removeEventListener("mouseup", handleMouseUp);
         }
       };
-    }, [activeTool, series, isDragging, selectedPoint]);
+    }, [
+      activeTool,
+      series,
+      selectedData,
+      addSeries,
+      chartData,
+      findPoints,
+      updatePoint,
+      setSelectedData,
+    ]);
 
     // Debug: Log series changes
     useEffect(() => {

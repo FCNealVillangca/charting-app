@@ -1,6 +1,7 @@
 import React from "react";
 
 interface SidebarProps {
+  activeTool?: string;
   onResetZoom?: () => void;
   onToggleCrosshair?: () => void;
   onToggleDotMode?: () => void;
@@ -8,6 +9,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
+  activeTool,
   onResetZoom,
   onToggleCrosshair,
   onToggleDotMode,
@@ -56,7 +58,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Dot Placement Tool */}
       <div style={{ marginBottom: "8px" }}>
         <button
-          style={buttonStyle}
+          style={{
+            ...buttonStyle,
+            backgroundColor: activeTool === "dot" ? "#4caf50" : "#fff",
+            color: activeTool === "dot" ? "#fff" : "#000",
+          }}
           title="Toggle Dot Placement"
           onClick={onToggleDotMode}
         >

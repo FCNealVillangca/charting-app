@@ -1,4 +1,4 @@
-import { createContext, useRef } from "react";
+import { createContext, useRef, useCallback } from "react";
 import React, { useState } from "react";
 import type { ReactNode } from "react";
 import type { ChartContextType } from "./chartTypes";
@@ -11,20 +11,20 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [series, setSeries] = useState<Series[]>([]);
-  const [selectedPoint, setSelectedPoint] = useState<{ seriesId: string; pointId: string } | null>(null);
+  const [selectedData, setSelectedData] = useState<{ seriesId: string; pointId: string } | null>(null);
   const [activeTool, setActiveTool] = useState<string>("none");
   const chartRef = useRef<BaseChartRef>(null);
 
-  const addSeries = (series: Series) => {
+  const addSeries = useCallback((series: Series) => {
     setSeries((prev) => [...prev, series]);
-  };
+  }, []);
 
-  const clearSeries = () => {
+  const clearSeries = useCallback(() => {
     setSeries([]);
-    setSelectedPoint(null);
-  };
+    setSelectedData(null);
+  }, []);
 
-  const updatePoint = (seriesId: string, pointId: string, x: number, y: number) => {
+  const updatePoint = useCallback((seriesId: string, pointId: string, x: number, y: number) => {
     setSeries((prev) =>
       prev.map((s) =>
         s.id === seriesId
@@ -37,19 +37,17 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
           : s
       )
     );
-  };
+  }, []);
 
-  const findPoints = (x: number, y: number) => {
+  const findPoints = useCallback((x: number, y: number, xTolerance: number = 10, yTolerance: number = 10): { seriesId: string; pointId: string } | null => {
     for (const s of series) {
-      const point = s.points.find((p) => Math.abs(p.x - x) < 2 && Math.abs(p.y - y) < 0.1);
+      const point = s.points.find((p) => Math.abs(p.x - x) < xTolerance && Math.abs(p.y - y) < yTolerance);
       if (point) {
-        console.log(s, point);
-        setSelectedPoint({ seriesId: s.id, pointId: point.id });
-        return;
+        return { seriesId: s.id, pointId: point.id };
       }
     }
-    // Don't clear selectedPoint if no point found
-  };
+    return null;
+  }, [series]);
 
   const resetZoom = () => {
     console.log("Reset zoom clicked");
@@ -73,8 +71,8 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         addSeries,
         clearSeries,
         updatePoint,
-        selectedPoint,
-        setSelectedPoint,
+        selectedData,
+        setSelectedData,
         findPoints,
         chartRef,
         activeTool,
