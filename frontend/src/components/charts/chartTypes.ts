@@ -9,6 +9,7 @@ export interface ChartContextType {
   series: Series[];
   addSeries: (series: Series) => void;
   clearSeries: () => void;
+  updatePoint: (seriesId: string, pointId: string, x: number, y: number) => void;
   selectedPoint: { seriesId: string; pointId: string } | null;
   setSelectedPoint: (point: { seriesId: string; pointId: string } | null) => void;
   findPoints: (x: number, y: number) => void;

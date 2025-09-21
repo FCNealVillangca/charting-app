@@ -32,8 +32,15 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
   ({ data, onChartCreated, activeTool = "none" }, ref) => {
     const chartRef = useRef<HTMLDivElement | null>(null);
     const chartInstance = useRef<Highcharts.Chart | null>(null);
-    const { series, addSeries, clearSeries, findPoints } =
-      useContext(ChartContext)!;
+    const {
+      series,
+      addSeries,
+      clearSeries,
+      updatePoint,
+      selectedPoint,
+      findPoints,
+    } = useContext(ChartContext)!;
+    const [isDragging, setIsDragging] = useState(false);
     const [tooltipData, setTooltipData] = useState<{
       visible: boolean;
       x: number;
@@ -290,29 +297,46 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
 
         const chart = chartInstance.current;
         const xAxis = chart.xAxis[0];
+        const yAxis = chart.yAxis[0];
 
         // Get mouse position relative to chart
         const rect = chart.container.getBoundingClientRect();
         const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
 
-        // Convert to axis values
-        const xValue = xAxis.toValue(x);
-
-        // Find closest data point
-        const index = Math.round(xValue);
-        if (index >= 0 && index < chartData.length) {
-          const dataPoint = chartData[index];
-          setTooltipData({
-            visible: true,
-            x: rect.left + 10, // Upper left of chart
-            y: rect.top + 10,
-            data: dataPoint,
-          });
+        if (isDragging && selectedPoint) {
+          // Update the selected point position
+          const xValue = xAxis.toValue(x);
+          const yValue = yAxis.toValue(y);
+          updatePoint(
+            selectedPoint.seriesId,
+            selectedPoint.pointId,
+            xValue,
+            yValue
+          );
+        } else {
+          // Show tooltip
+          const xValue = xAxis.toValue(x);
+          const index = Math.round(xValue);
+          if (index >= 0 && index < chartData.length) {
+            const dataPoint = chartData[index];
+            setTooltipData({
+              visible: true,
+              x: rect.left + 10, // Upper left of chart
+              y: rect.top + 10,
+              data: dataPoint,
+            });
+          }
         }
       };
 
       const handleMouseLeave = () => {
         setTooltipData({ visible: false, x: 0, y: 0, data: null });
+      };
+
+      const handleMouseUp = () => {
+        setIsDragging(false);
+        document.body.style.cursor = "";
       };
 
       const handleMouseDown = (e: MouseEvent) => {
@@ -334,7 +358,12 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         // Always find and select series at the point
         findPoints(xValue, yValue);
 
-        if (activeTool === "dot") {
+        if (selectedPoint) {
+          // Start dragging
+          setIsDragging(true);
+          // Change cursor to grabbing
+          document.body.style.cursor = "grabbing";
+        } else if (activeTool === "dot") {
           // Create a new series
           const newSeries = {
             id: `series_${Date.now()}_${Math.random()}`,
@@ -362,6 +391,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         chartElement.addEventListener("mousemove", handleMouseMove);
         chartElement.addEventListener("mouseleave", handleMouseLeave);
         chartElement.addEventListener("mousedown", handleMouseDown);
+        chartElement.addEventListener("mouseup", handleMouseUp);
       }
 
       return () => {
@@ -372,9 +402,10 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           chartElement.removeEventListener("mousemove", handleMouseMove);
           chartElement.removeEventListener("mouseleave", handleMouseLeave);
           chartElement.removeEventListener("mousedown", handleMouseDown);
+          chartElement.removeEventListener("mouseup", handleMouseUp);
         }
       };
-    }, [activeTool, series]);
+    }, [activeTool, series, isDragging, selectedPoint]);
 
     // Debug: Log series changes
     useEffect(() => {

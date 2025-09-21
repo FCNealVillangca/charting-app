@@ -24,6 +24,21 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     setSelectedPoint(null);
   };
 
+  const updatePoint = (seriesId: string, pointId: string, x: number, y: number) => {
+    setSeries((prev) =>
+      prev.map((s) =>
+        s.id === seriesId
+          ? {
+              ...s,
+              points: s.points.map((p) =>
+                p.id === pointId ? { ...p, x, y } : p
+              ),
+            }
+          : s
+      )
+    );
+  };
+
   const findPoints = (x: number, y: number) => {
     for (const s of series) {
       const point = s.points.find((p) => Math.abs(p.x - x) < 2 && Math.abs(p.y - y) < 0.1);
@@ -33,7 +48,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         return;
       }
     }
-    setSelectedPoint(null);
+    // Don't clear selectedPoint if no point found
   };
 
   const resetZoom = () => {
@@ -57,6 +72,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         series,
         addSeries,
         clearSeries,
+        updatePoint,
         selectedPoint,
         setSelectedPoint,
         findPoints,
