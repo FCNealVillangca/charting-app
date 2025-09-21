@@ -355,8 +355,10 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         const xValue = xAxis.toValue(x);
         const yValue = yAxis.toValue(y);
 
-        // Always find and select series at the point
-        findPoints(xValue, yValue);
+        // Find and select series at the point if none selected
+        if (!selectedPoint) {
+          findPoints(xValue, yValue);
+        }
 
         if (selectedPoint) {
           // Start dragging
