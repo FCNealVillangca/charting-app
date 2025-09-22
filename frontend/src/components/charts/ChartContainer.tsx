@@ -27,36 +27,66 @@ const ChartContainer: React.FC<ChartContainerProps> = ({ data }) => {
   } = chartContext;
 
   return (
-    <div style={{ display: "flex", height: "100%", width: "100%" }}>
-      <Sidebar
-        activeTool={activeTool}
-        onResetZoom={resetZoom}
-        onToggleCrosshair={toggleCrosshair}
-        onToggleDotMode={toggleDotMode}
-        onClearSeries={clearSeries}
-      />
-      <div
-        style={{
-          flex: 1,
-          marginLeft: "8px",
-          position: "relative",
-          height: "100%",
-          display: "flex",
-        }}
-      >
-        <div style={{ flex: 1, position: "relative" }}>
-          <BaseChart
-            ref={chartRef}
-            data={data}
-            activeTool={activeTool}
-            onChartCreated={(newChart) => {
-              setChart(newChart);
-            }}
-          />
+    <>
+      <style>{`
+        .chart-container {
+          display: flex;
+          height: 100%;
+          width: 100%;
+        }
+        .chart-main {
+          flex: 1;
+          margin-left: 8px;
+          position: relative;
+          height: 100%;
+          display: flex;
+        }
+        .chart-content {
+          flex: 1;
+          position: relative;
+        }
+        @media (max-width: 768px) {
+          .chart-container {
+            flex-direction: column;
+          }
+          .chart-main {
+            margin-left: 0;
+            margin-top: 8px;
+            flex-direction: column;
+          }
+          .chart-content {
+            height: 60vh;
+          }
+        }
+        @media (max-width: 480px) {
+          .chart-content {
+            height: 50vh;
+          }
+        }
+      `}</style>
+      <div className="chart-container">
+        <Sidebar
+          activeTool={activeTool}
+          onResetZoom={resetZoom}
+          onToggleCrosshair={toggleCrosshair}
+          onToggleDotMode={toggleDotMode}
+          onClearSeries={clearSeries}
+        />
+        <div className="chart-main">
+          <div className="chart-content">
+            <BaseChart
+              ref={chartRef}
+              data={data}
+              activeTool={activeTool}
+              onChartCreated={(newChart) => {
+                setChart(newChart);
+              }}
+            />
+          </div>
+          <SeriesSidebar />
         </div>
-        <SeriesSidebar />
       </div>
-    </div>
+    </>
   );
 };
 
