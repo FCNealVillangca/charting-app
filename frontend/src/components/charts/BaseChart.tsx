@@ -160,6 +160,11 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
                   fillColor: s.color || "#ff6b35",
                   lineColor: "#fff",
                   lineWidth: 2,
+                  states: {
+                    hover: {
+                      enabled: false, // Disable marker hover effects
+                    },
+                  },
                 },
                 showInLegend: false,
                 enableMouseTracking: true,
@@ -177,8 +182,10 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
             enableMouseTracking: true,
             states: {
               hover: {
-                enabled: true,
-                brightness: 0.1,
+                enabled: false, // Disable hover effects to keep points consistent
+              },
+              inactive: {
+                opacity: 1, // Keep full opacity when series is inactive
               },
             },
           },
