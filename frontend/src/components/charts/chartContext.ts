@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import type { ChartContextType } from "./chartTypes";
 import type { Series } from "./chartTypes";
 import type { BaseChartRef } from "./BaseChart";
+import { getRandomChartColor } from "./colorUtils";
 
 export const ChartContext = createContext<ChartContextType | undefined>(undefined);
 
@@ -13,10 +14,11 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   const [series, setSeries] = useState<Series[]>([]);
   const [selectedData, setSelectedData] = useState<{ seriesId: string; pointId: string } | null>(null);
   const [activeTool, setActiveTool] = useState<string>("none");
+  const [selectedSeries, setSelectedSeries] = useState<string | null>(null);
   const chartRef = useRef<BaseChartRef>(null);
 
-  const addSeries = useCallback((series: Series) => {
-    setSeries((prev) => [...prev, series]);
+  const addSeries = useCallback((newSeries: Series) => {
+    setSeries((prev) => [...prev, newSeries]);
   }, []);
 
   const clearSeries = useCallback(() => {
@@ -63,9 +65,54 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     setActiveTool(activeTool === "none" ? "dot" : "none");
   };
 
+  const selectSeries = useCallback((seriesId: string | null) => {
+    setSelectedSeries(seriesId);
+  }, []);
+
+  const updateSeriesName = useCallback((seriesId: string, name: string) => {
+    setSeries((prev) =>
+      prev.map((s) => (s.id === seriesId ? { ...s, name } : s))
+    );
+  }, []);
+
+  const updateSeriesColor = useCallback((seriesId: string, color: string) => {
+    setSeries((prev) =>
+      prev.map((s) => (s.id === seriesId ? { ...s, color } : s))
+    );
+  }, []);
+
+  const deleteSeries = useCallback((seriesId: string) => {
+    setSeries((prev) => prev.filter((s) => s.id !== seriesId));
+    if (selectedSeries === seriesId) {
+      setSelectedSeries(null);
+    }
+    setSelectedData(null);
+  }, [selectedSeries]);
+
+  const addPointToSeries = useCallback((seriesId: string, point: { x: number; y: number }) => {
+    const pointId = `point_${Date.now()}_${Math.random()}`;
+    setSeries((prev) =>
+      prev.map((s) =>
+        s.id === seriesId
+          ? { ...s, points: [...s.points, { id: pointId, ...point }] }
+          : s
+      )
+    );
+  }, []);
+
+  const removePoint = useCallback((seriesId: string, pointId: string) => {
+    setSeries((prev) =>
+      prev.map((s) =>
+        s.id === seriesId
+          ? { ...s, points: s.points.filter((p) => p.id !== pointId) }
+          : s
+      )
+    );
+  }, []);
+
   return React.createElement(
     ChartContext.Provider,
-    { 
+    {
       value: {
         series,
         addSeries,
@@ -79,7 +126,14 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         setActiveTool,
         resetZoom,
         toggleCrosshair,
-        toggleDotMode
+        toggleDotMode,
+        selectedSeries,
+        selectSeries,
+        updateSeriesName,
+        updateSeriesColor,
+        deleteSeries,
+        addPointToSeries,
+        removePoint
       }
     },
     children

@@ -12,6 +12,7 @@ import "highcharts/highcharts-more";
 import "highcharts/modules/stock";
 import type { DataPoint } from "./types";
 import { ChartContext } from "./chartContext";
+import { getRandomChartColor } from "./colorUtils";
 
 // Exposed imperative API
 export interface BaseChartRef {
@@ -147,20 +148,23 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
             colorByPoint: false,
             showInLegend: false,
           } as Highcharts.SeriesCandlestickOptions,
-          {
-            type: "scatter",
-            name: "Series",
-            data: series.flatMap((s) => s.points.map((p) => [p.x, p.y])),
-            color: "#ff6b35",
-            marker: {
-              radius: 4,
-              fillColor: "#ff6b35",
-              lineColor: "#fff",
-              lineWidth: 2,
-            },
-            showInLegend: false,
-            enableMouseTracking: true,
-          } as Highcharts.SeriesScatterOptions,
+          ...series.map(
+            (s, index) =>
+              ({
+                type: "scatter" as const,
+                name: s.name || `Series ${index + 1}`,
+                data: s.points.map((p) => [p.x, p.y]),
+                color: s.color || "#ff6b35",
+                marker: {
+                  radius: 4,
+                  fillColor: s.color || "#ff6b35",
+                  lineColor: "#fff",
+                  lineWidth: 2,
+                },
+                showInLegend: false,
+                enableMouseTracking: true,
+              } as Highcharts.SeriesScatterOptions)
+          ),
         ],
         plotOptions: {
           candlestick: {
@@ -386,8 +390,11 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         } else if (activeTool === "dot") {
           e.preventDefault(); // Prevent zoom
           // Create a new series
+          const seriesNumber = series.length + 1;
           const newSeries = {
             id: `series_${Date.now()}_${Math.random()}`,
+            name: `Series ${seriesNumber}`,
+            color: getRandomChartColor(),
             points: [
               {
                 id: `point_${Date.now()}_${Math.random()}`,
