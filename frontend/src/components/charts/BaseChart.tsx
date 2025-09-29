@@ -85,9 +85,9 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           type: "candlestick",
           backgroundColor: "transparent",
           animation: false,
-          zoomType: false, // Disable zoom
+          zoomType: selectedData ? false : "x", // Disable zoom when data is selected
           panning: {
-            enabled: true,
+            enabled: activeTool === "none", // Disable panning when drawing tools are active
             type: "x", // Enable panning on x-axis only (time)
           },
           panKey: "shift", // Hold Shift key to pan instead of zoom
@@ -215,7 +215,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           enabled: false,
         },
       }),
-      [highchartsData, series, chartData]
+      [highchartsData, series, chartData, activeTool, selectedData]
     );
 
     const resetZoom = () => {
