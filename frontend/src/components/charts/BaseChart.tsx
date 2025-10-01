@@ -41,6 +41,9 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
       selectedData,
       setSelectedData,
       findPoints,
+      getIncompleteDrawing,
+      completeDrawing,
+      addPointToDrawing,
     } = useContext(ChartContext)!;
     const [tooltipData, setTooltipData] = useState<{
       visible: boolean;
@@ -150,31 +153,76 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           } as Highcharts.SeriesCandlestickOptions,
           ...drawings.flatMap((drawing) =>
             drawing.series.map((s, index) => {
-              // Determine series type based on drawing type
-              const seriesType = drawing.type === "line" ? "line" : "scatter";
-
-              return {
-                type: seriesType,
-                name: `${drawing.name} - ${index + 1}`,
-                data: s.points.map((p) => [p.x, p.y]),
-                color: drawing.color || "#ff6b35",
-                marker: {
-                  radius: 4,
-                  fillColor: drawing.color || "#ff6b35",
-                  lineColor: "#fff",
-                  lineWidth: 2,
-                  states: {
-                    hover: {
-                      enabled: false,
+              // For lines, only render if we have at least 2 points OR if it's incomplete with 1 point (show as scatter)
+              if (drawing.type === "line") {
+                if (s.points.length >= 2) {
+                  // Complete line - render as line
+                  return {
+                    type: "line" as const,
+                    name: `${drawing.name} - ${index + 1}`,
+                    data: s.points.map((p) => [p.x, p.y]),
+                    color: drawing.color || "#ff6b35",
+                    marker: {
+                      radius: 4,
+                      fillColor: drawing.color || "#ff6b35",
+                      lineColor: "#fff",
+                      lineWidth: 2,
+                      states: {
+                        hover: {
+                          enabled: false,
+                        },
+                      },
+                    },
+                    lineWidth: 2,
+                    showInLegend: false,
+                    enableMouseTracking: true,
+                  } as Highcharts.SeriesLineOptions;
+                } else {
+                  // Incomplete line - render first point as scatter
+                  return {
+                    type: "scatter" as const,
+                    name: `${drawing.name} - ${index + 1}`,
+                    data: s.points.map((p) => [p.x, p.y]),
+                    color: drawing.color || "#ff6b35",
+                    marker: {
+                      radius: 4,
+                      fillColor: drawing.color || "#ff6b35",
+                      lineColor: "#fff",
+                      lineWidth: 2,
+                      states: {
+                        hover: {
+                          enabled: false,
+                        },
+                      },
+                    },
+                    lineWidth: 0,
+                    showInLegend: false,
+                    enableMouseTracking: true,
+                  } as Highcharts.SeriesScatterOptions;
+                }
+              } else {
+                // Other drawing types (dots, etc.)
+                return {
+                  type: "scatter" as const,
+                  name: `${drawing.name} - ${index + 1}`,
+                  data: s.points.map((p) => [p.x, p.y]),
+                  color: drawing.color || "#ff6b35",
+                  marker: {
+                    radius: 4,
+                    fillColor: drawing.color || "#ff6b35",
+                    lineColor: "#fff",
+                    lineWidth: 2,
+                    states: {
+                      hover: {
+                        enabled: false,
+                      },
                     },
                   },
-                },
-                lineWidth: seriesType === "line" ? 2 : 0,
-                showInLegend: false,
-                enableMouseTracking: true,
-              } as
-                | Highcharts.SeriesScatterOptions
-                | Highcharts.SeriesLineOptions;
+                  lineWidth: 0,
+                  showInLegend: false,
+                  enableMouseTracking: true,
+                } as Highcharts.SeriesScatterOptions;
+              }
             })
           ),
         ],
@@ -390,9 +438,6 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
         const xValue = xAxis.toValue(x);
         const yValue = yAxis.toValue(y);
         const foundPoint = findPoints(xValue, yValue);
-        console.log("foundPoint", foundPoint);
-        console.log("selectedData", selectedData);
-        console.log("activeTool", activeTool);
 
         if (activeTool === "none" || activeTool === null) {
           e.preventDefault(); // Prevent zoom selection
@@ -425,8 +470,60 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
             ],
           };
 
-          console.log(newDrawing);
           addDrawing(newDrawing);
+        } else if (activeTool === "line") {
+          e.preventDefault(); // Prevent zoom
+
+          // Find incomplete line drawing directly from current drawings state
+          const incompleteDrawing = drawings.find(
+            (d) => d.metadata?.isIncomplete && d.type === "line"
+          );
+
+          console.log("LINE CLICK:", {
+            incompleteDrawing,
+            allDrawings: drawings,
+            activeTool,
+          });
+
+          if (!incompleteDrawing) {
+            // First click - create line with first point
+            const drawingId = `drawing_${Date.now()}_${Math.random()}`;
+            const seriesId = `series_${Date.now()}_${Math.random()}`;
+
+            const newDrawing = {
+              id: drawingId,
+              name: `Line ${
+                drawings.filter((d) => d.type === "line").length + 1
+              }`,
+              type: "line" as const,
+              color: getRandomChartColor(),
+              series: [
+                {
+                  id: seriesId,
+                  points: [
+                    {
+                      id: `point_${Date.now()}_${Math.random()}`,
+                      x: xValue,
+                      y: yValue,
+                    },
+                  ],
+                },
+              ],
+              metadata: { isIncomplete: true },
+            };
+
+            console.log("CREATING LINE:", newDrawing);
+            addDrawing(newDrawing);
+          } else {
+            // Second click - add second point and complete
+            console.log("COMPLETING LINE:", incompleteDrawing.id);
+            const seriesId = incompleteDrawing.series[0].id;
+            addPointToDrawing(incompleteDrawing.id, seriesId, {
+              x: xValue,
+              y: yValue,
+            });
+            completeDrawing(incompleteDrawing.id);
+          }
         }
       };
 
@@ -463,12 +560,10 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
       findPoints,
       updatePoint,
       setSelectedData,
+      getIncompleteDrawing,
+      completeDrawing,
+      addPointToDrawing,
     ]);
-
-    // Debug: Log drawings changes
-    useEffect(() => {
-      console.log("Drawings updated:", drawings);
-    }, [drawings]);
 
     return (
       <div style={{ position: "relative", width: "100%", height: "100%" }}>

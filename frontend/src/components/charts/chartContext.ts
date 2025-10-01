@@ -72,6 +72,62 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     setActiveTool(activeTool === "none" ? "dot" : "none");
   };
 
+  const toggleLineMode = () => {
+    setActiveTool(activeTool === "none" ? "line" : "none");
+  };
+
+  const getIncompleteDrawing = useCallback(() => {
+    return drawings.find((d) => d.metadata?.isIncomplete && d.type === activeTool);
+  }, [drawings, activeTool]);
+
+  const completeDrawing = useCallback((drawingId: string) => {
+    setDrawings((prev) =>
+      prev.map((d) =>
+        d.id === drawingId
+          ? { ...d, metadata: { ...d.metadata, isIncomplete: false } }
+          : d
+      )
+    );
+    setActiveTool("none"); // Auto-deselect tool when complete
+  }, []);
+
+  const getRemainingPoints = useCallback(() => {
+    const incompleteDrawing = drawings.find((d) => d.metadata?.isIncomplete && d.type === activeTool);
+    
+    if (!incompleteDrawing) {
+      // No incomplete drawing, show max points needed
+      switch (activeTool) {
+        case "line":
+        case "trendline":
+          return 2;
+        case "fibonacci":
+          return 2;
+        case "channel":
+          return 3;
+        default:
+          return 0;
+      }
+    }
+    
+    // Calculate remaining points
+    const currentPoints = incompleteDrawing.series[0]?.points.length || 0;
+    const maxPoints = (() => {
+      switch (activeTool) {
+        case "line":
+        case "trendline":
+          return 2;
+        case "fibonacci":
+          return 2;
+        case "channel":
+          return 3;
+        default:
+          return 0;
+      }
+    })();
+    
+    return maxPoints - currentPoints;
+  }, [drawings, activeTool]);
+
   const selectDrawing = useCallback((drawingId: string | null) => {
     setSelectedDrawing(drawingId);
   }, []);
@@ -154,7 +210,11 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         updateDrawingColor,
         deleteDrawing,
         addPointToDrawing,
-        removePoint
+        removePoint,
+        toggleLineMode,
+        getIncompleteDrawing,
+        completeDrawing,
+        getRemainingPoints
       }
     },
     children

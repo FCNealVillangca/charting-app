@@ -5,7 +5,9 @@ interface SidebarProps {
   onResetZoom?: () => void;
   onToggleCrosshair?: () => void;
   onToggleDotMode?: () => void;
+  onToggleLineMode?: () => void;
   onClearSeries?: () => void;
+  getRemainingPoints?: () => number;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -13,7 +15,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onResetZoom,
   onToggleCrosshair,
   onToggleDotMode,
+  onToggleLineMode,
   onClearSeries,
+  getRemainingPoints,
 }) => {
   const buttonStyle = {
     width: "32px",
@@ -79,6 +83,23 @@ const Sidebar: React.FC<SidebarProps> = ({
             onClick={onToggleDotMode}
           >
             •
+          </button>
+        </div>
+
+        {/* Line Drawing Tool */}
+        <div style={{ marginBottom: "8px" }}>
+          <button
+            style={{
+              ...buttonStyle,
+              backgroundColor: activeTool === "line" ? "#4caf50" : "#fff",
+              color: activeTool === "line" ? "#fff" : "#000",
+            }}
+            title="Line Drawing Tool"
+            onClick={onToggleLineMode}
+          >
+            {activeTool === "line" && getRemainingPoints
+              ? getRemainingPoints()
+              : "📏"}
           </button>
         </div>
 

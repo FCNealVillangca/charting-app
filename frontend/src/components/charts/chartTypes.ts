@@ -35,4 +35,8 @@ export interface ChartContextType {
   deleteDrawing: (drawingId: string) => void;
   addPointToDrawing: (drawingId: string, seriesId: string, point: { x: number; y: number }) => void;
   removePoint: (drawingId: string, seriesId: string, pointId: string) => void;
+  toggleLineMode: () => void;
+  getIncompleteDrawing: () => Drawing | undefined;
+  completeDrawing: (drawingId: string) => void;
+  getRemainingPoints: () => number;
 }
