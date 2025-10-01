@@ -8,10 +8,10 @@ const SeriesSidebar: React.FC = () => {
     return null;
   }
 
-  const { series, selectedData, activeTool } = chartContext;
+  const { drawings, selectedData, activeTool } = chartContext;
 
   const state = {
-    series,
+    drawings,
     selectedData,
     activeTool,
   };
@@ -20,7 +20,7 @@ const SeriesSidebar: React.FC = () => {
     <>
       <style>{`
         .series-sidebar {
-          width: 300px;
+          width: 400px;
           padding: 16px;
           background-color: #f5f5f5;
           border-left: 1px solid #ddd;

@@ -1,55 +1,62 @@
 import { createContext, useRef, useCallback } from "react";
 import React, { useState } from "react";
 import type { ReactNode } from "react";
-import type { ChartContextType } from "./chartTypes";
-import type { Series } from "./chartTypes";
+import type { ChartContextType, Drawing } from "./chartTypes";
 import type { BaseChartRef } from "./BaseChart";
-import { getRandomChartColor } from "./colorUtils";
 
 export const ChartContext = createContext<ChartContextType | undefined>(undefined);
 
 export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [series, setSeries] = useState<Series[]>([]);
-  const [selectedData, setSelectedData] = useState<{ seriesId: string; pointId: string } | null>(null);
+  const [drawings, setDrawings] = useState<Drawing[]>([]);
+  const [selectedData, setSelectedData] = useState<{ drawingId: string; seriesId: string; pointId: string } | null>(null);
   const [activeTool, setActiveTool] = useState<string>("none");
-  const [selectedSeries, setSelectedSeries] = useState<string | null>(null);
+  const [selectedDrawing, setSelectedDrawing] = useState<string | null>(null);
   const chartRef = useRef<BaseChartRef>(null);
 
-  const addSeries = useCallback((newSeries: Series) => {
-    setSeries((prev) => [...prev, newSeries]);
+  const addDrawing = useCallback((newDrawing: Drawing) => {
+    setDrawings((prev) => [...prev, newDrawing]);
   }, []);
 
-  const clearSeries = useCallback(() => {
-    setSeries([]);
+  const clearDrawings = useCallback(() => {
+    setDrawings([]);
     setSelectedData(null);
   }, []);
 
-  const updatePoint = useCallback((seriesId: string, pointId: string, x: number, y: number) => {
-    setSeries((prev) =>
-      prev.map((s) =>
-        s.id === seriesId
+  const updatePoint = useCallback((drawingId: string, seriesId: string, pointId: string, x: number, y: number) => {
+    setDrawings((prev) =>
+      prev.map((d) =>
+        d.id === drawingId
           ? {
-              ...s,
-              points: s.points.map((p) =>
-                p.id === pointId ? { ...p, x, y } : p
+              ...d,
+              series: d.series.map((s) =>
+                s.id === seriesId
+                  ? {
+                      ...s,
+                      points: s.points.map((p) =>
+                        p.id === pointId ? { ...p, x, y } : p
+                      ),
+                    }
+                  : s
               ),
             }
-          : s
+          : d
       )
     );
   }, []);
 
-  const findPoints = useCallback((x: number, y: number, xTolerance: number = 10, yTolerance: number = 10): { seriesId: string; pointId: string } | null => {
-    for (const s of series) {
-      const point = s.points.find((p) => Math.abs(p.x - x) < xTolerance && Math.abs(p.y - y) < yTolerance);
-      if (point) {
-        return { seriesId: s.id, pointId: point.id };
+  const findPoints = useCallback((x: number, y: number, xTolerance: number = 10, yTolerance: number = 10): { drawingId: string; seriesId: string; pointId: string } | null => {
+    for (const d of drawings) {
+      for (const s of d.series) {
+        const point = s.points.find((p) => Math.abs(p.x - x) < xTolerance && Math.abs(p.y - y) < yTolerance);
+        if (point) {
+          return { drawingId: d.id, seriesId: s.id, pointId: point.id };
+        }
       }
     }
     return null;
-  }, [series]);
+  }, [drawings]);
 
   const resetZoom = () => {
     console.log("Reset zoom clicked");
@@ -65,47 +72,61 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     setActiveTool(activeTool === "none" ? "dot" : "none");
   };
 
-  const selectSeries = useCallback((seriesId: string | null) => {
-    setSelectedSeries(seriesId);
+  const selectDrawing = useCallback((drawingId: string | null) => {
+    setSelectedDrawing(drawingId);
   }, []);
 
-  const updateSeriesName = useCallback((seriesId: string, name: string) => {
-    setSeries((prev) =>
-      prev.map((s) => (s.id === seriesId ? { ...s, name } : s))
+  const updateDrawingName = useCallback((drawingId: string, name: string) => {
+    setDrawings((prev) =>
+      prev.map((d) => (d.id === drawingId ? { ...d, name } : d))
     );
   }, []);
 
-  const updateSeriesColor = useCallback((seriesId: string, color: string) => {
-    setSeries((prev) =>
-      prev.map((s) => (s.id === seriesId ? { ...s, color } : s))
+  const updateDrawingColor = useCallback((drawingId: string, color: string) => {
+    setDrawings((prev) =>
+      prev.map((d) => (d.id === drawingId ? { ...d, color } : d))
     );
   }, []);
 
-  const deleteSeries = useCallback((seriesId: string) => {
-    setSeries((prev) => prev.filter((s) => s.id !== seriesId));
-    if (selectedSeries === seriesId) {
-      setSelectedSeries(null);
+  const deleteDrawing = useCallback((drawingId: string) => {
+    setDrawings((prev) => prev.filter((d) => d.id !== drawingId));
+    if (selectedDrawing === drawingId) {
+      setSelectedDrawing(null);
     }
     setSelectedData(null);
-  }, [selectedSeries]);
+  }, [selectedDrawing]);
 
-  const addPointToSeries = useCallback((seriesId: string, point: { x: number; y: number }) => {
+  const addPointToDrawing = useCallback((drawingId: string, seriesId: string, point: { x: number; y: number }) => {
     const pointId = `point_${Date.now()}_${Math.random()}`;
-    setSeries((prev) =>
-      prev.map((s) =>
-        s.id === seriesId
-          ? { ...s, points: [...s.points, { id: pointId, ...point }] }
-          : s
+    setDrawings((prev) =>
+      prev.map((d) =>
+        d.id === drawingId
+          ? {
+              ...d,
+              series: d.series.map((s) =>
+                s.id === seriesId
+                  ? { ...s, points: [...s.points, { id: pointId, ...point }] }
+                  : s
+              ),
+            }
+          : d
       )
     );
   }, []);
 
-  const removePoint = useCallback((seriesId: string, pointId: string) => {
-    setSeries((prev) =>
-      prev.map((s) =>
-        s.id === seriesId
-          ? { ...s, points: s.points.filter((p) => p.id !== pointId) }
-          : s
+  const removePoint = useCallback((drawingId: string, seriesId: string, pointId: string) => {
+    setDrawings((prev) =>
+      prev.map((d) =>
+        d.id === drawingId
+          ? {
+              ...d,
+              series: d.series.map((s) =>
+                s.id === seriesId
+                  ? { ...s, points: s.points.filter((p) => p.id !== pointId) }
+                  : s
+              ),
+            }
+          : d
       )
     );
   }, []);
@@ -114,9 +135,9 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     ChartContext.Provider,
     {
       value: {
-        series,
-        addSeries,
-        clearSeries,
+        drawings,
+        addDrawing,
+        clearDrawings,
         updatePoint,
         selectedData,
         setSelectedData,
@@ -127,12 +148,12 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         resetZoom,
         toggleCrosshair,
         toggleDotMode,
-        selectedSeries,
-        selectSeries,
-        updateSeriesName,
-        updateSeriesColor,
-        deleteSeries,
-        addPointToSeries,
+        selectedDrawing,
+        selectDrawing,
+        updateDrawingName,
+        updateDrawingColor,
+        deleteDrawing,
+        addPointToDrawing,
         removePoint
       }
     },

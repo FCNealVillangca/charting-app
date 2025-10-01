@@ -34,9 +34,9 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
     const chartRef = useRef<HTMLDivElement | null>(null);
     const chartInstance = useRef<Highcharts.Chart | null>(null);
     const {
-      series,
-      addSeries,
-      clearSeries,
+      drawings,
+      addDrawing,
+      clearDrawings,
       updatePoint,
       selectedData,
       setSelectedData,
@@ -148,27 +148,34 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
             colorByPoint: false,
             showInLegend: false,
           } as Highcharts.SeriesCandlestickOptions,
-          ...series.map(
-            (s, index) =>
-              ({
-                type: "scatter" as const,
-                name: s.name || `Series ${index + 1}`,
+          ...drawings.flatMap((drawing) =>
+            drawing.series.map((s, index) => {
+              // Determine series type based on drawing type
+              const seriesType = drawing.type === "line" ? "line" : "scatter";
+
+              return {
+                type: seriesType,
+                name: `${drawing.name} - ${index + 1}`,
                 data: s.points.map((p) => [p.x, p.y]),
-                color: s.color || "#ff6b35",
+                color: drawing.color || "#ff6b35",
                 marker: {
                   radius: 4,
-                  fillColor: s.color || "#ff6b35",
+                  fillColor: drawing.color || "#ff6b35",
                   lineColor: "#fff",
                   lineWidth: 2,
                   states: {
                     hover: {
-                      enabled: false, // Disable marker hover effects
+                      enabled: false,
                     },
                   },
                 },
+                lineWidth: seriesType === "line" ? 2 : 0,
                 showInLegend: false,
                 enableMouseTracking: true,
-              } as Highcharts.SeriesScatterOptions)
+              } as
+                | Highcharts.SeriesScatterOptions
+                | Highcharts.SeriesLineOptions;
+            })
           ),
         ],
         plotOptions: {
@@ -215,7 +222,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           enabled: false,
         },
       }),
-      [highchartsData, series, chartData, activeTool, selectedData]
+      [highchartsData, drawings, chartData, activeTool, selectedData]
     );
 
     const resetZoom = () => {
@@ -227,7 +234,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
     useImperativeHandle(ref, () => ({
       resetZoom,
       getChart: () => chartInstance.current,
-      clearSeries,
+      clearSeries: clearDrawings,
     }));
 
     useEffect(() => {
@@ -357,6 +364,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
 
         // Update the selected point position and deselect
         updatePoint(
+          selectedData.drawingId,
           selectedData.seriesId,
           selectedData.pointId,
           xValue,
@@ -396,23 +404,29 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
           }
         } else if (activeTool === "dot") {
           e.preventDefault(); // Prevent zoom
-          // Create a new series
-          const seriesNumber = series.length + 1;
-          const newSeries = {
-            id: `series_${Date.now()}_${Math.random()}`,
-            name: `Series ${seriesNumber}`,
+          // Create a new drawing with a single point
+          const drawingNumber = drawings.length + 1;
+          const newDrawing = {
+            id: `drawing_${Date.now()}_${Math.random()}`,
+            name: `Point ${drawingNumber}`,
+            type: "dot" as const,
             color: getRandomChartColor(),
-            points: [
+            series: [
               {
-                id: `point_${Date.now()}_${Math.random()}`,
-                x: xValue,
-                y: yValue,
+                id: `series_${Date.now()}_${Math.random()}`,
+                points: [
+                  {
+                    id: `point_${Date.now()}_${Math.random()}`,
+                    x: xValue,
+                    y: yValue,
+                  },
+                ],
               },
             ],
           };
 
-          console.log(newSeries);
-          addSeries(newSeries);
+          console.log(newDrawing);
+          addDrawing(newDrawing);
         }
       };
 
@@ -442,19 +456,19 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
       };
     }, [
       activeTool,
-      series,
+      drawings,
       selectedData,
-      addSeries,
+      addDrawing,
       chartData,
       findPoints,
       updatePoint,
       setSelectedData,
     ]);
 
-    // Debug: Log series changes
+    // Debug: Log drawings changes
     useEffect(() => {
-      console.log("Series updated:", series);
-    }, [series]);
+      console.log("Drawings updated:", drawings);
+    }, [drawings]);
 
     return (
       <div style={{ position: "relative", width: "100%", height: "100%" }}>
