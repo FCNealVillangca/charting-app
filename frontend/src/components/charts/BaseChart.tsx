@@ -234,6 +234,7 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
             upLineColor: "#089981",
           },
           series: {
+            animation: false, // Disable all series animations including transitions
             enableMouseTracking: true,
             states: {
               hover: {

@@ -91,42 +91,34 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     setActiveTool("none"); // Auto-deselect tool when complete
   }, []);
 
+  const getMaxPointsForTool = useCallback((tool: string): number => {
+    switch (tool) {
+      case "line":
+        return 2;
+      case "trendline":
+        return 2;
+      case "fibonacci":
+        return 2;
+      case "channel":
+        return 3;
+      default:
+        return 0;
+    }
+  }, []);
+
   const getRemainingPoints = useCallback(() => {
     const incompleteDrawing = drawings.find((d) => d.metadata?.isIncomplete && d.type === activeTool);
+    const maxPoints = getMaxPointsForTool(activeTool);
     
     if (!incompleteDrawing) {
       // No incomplete drawing, show max points needed
-      switch (activeTool) {
-        case "line":
-        case "trendline":
-          return 2;
-        case "fibonacci":
-          return 2;
-        case "channel":
-          return 3;
-        default:
-          return 0;
-      }
+      return maxPoints;
     }
     
     // Calculate remaining points
     const currentPoints = incompleteDrawing.series[0]?.points.length || 0;
-    const maxPoints = (() => {
-      switch (activeTool) {
-        case "line":
-        case "trendline":
-          return 2;
-        case "fibonacci":
-          return 2;
-        case "channel":
-          return 3;
-        default:
-          return 0;
-      }
-    })();
-    
     return maxPoints - currentPoints;
-  }, [drawings, activeTool]);
+  }, [drawings, activeTool, getMaxPointsForTool]);
 
   const selectDrawing = useCallback((drawingId: string | null) => {
     setSelectedDrawing(drawingId);
