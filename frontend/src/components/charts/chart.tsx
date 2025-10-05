@@ -207,15 +207,31 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
                   } as Highcharts.SeriesScatterOptions;
                 }
               } else {
-                // Other drawing types (dots, etc.)
+                // Other drawing types (dots, triangles, squares, etc.)
+                const getMarkerSymbol = (drawingType: string) => {
+                  switch (drawingType) {
+                    case "triangle":
+                      return "triangle";
+                    case "square":
+                      return "square";
+                    case "circle":
+                      return "circle";
+                    case "diamond":
+                      return "diamond";
+                    default:
+                      return "circle"; // Default to circle for dot
+                  }
+                };
+
                 return {
                   type: "scatter" as const,
                   name: `${drawing.name} - ${index + 1}`,
                   data: s.points.map((p) => [p.x, p.y]),
-                  color: drawing.color || "#ff6b35",
+                  color: drawing.color || "#4caf50",
                   marker: {
-                    radius: 4,
-                    fillColor: drawing.color || "#ff6b35",
+                    radius: 6,
+                    symbol: getMarkerSymbol(drawing.type),
+                    fillColor: drawing.color || "#4caf50",
                     lineColor: "#fff",
                     lineWidth: 2,
                     states: {
@@ -454,15 +470,15 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
               setSelectedData(foundPoint);
             }
           }
-        } else if (activeTool === "dot") {
+        } else if (activeTool === "dot" || activeTool === "triangle" || activeTool === "square" || activeTool === "circle" || activeTool === "diamond") {
           e.preventDefault(); // Prevent zoom
           // Create a new drawing with a single point
           const drawingNumber = drawings.length + 1;
           const newDrawing = {
             id: `drawing_${Date.now()}_${Math.random()}`,
             name: `Point ${drawingNumber}`,
-            type: "dot" as const,
-            color: getRandomChartColor(),
+            type: activeTool as any, // Use the active tool as the drawing type
+            color: "#4caf50", // Fixed green color instead of random
             series: [
               {
                 id: `series_${Date.now()}_${Math.random()}`,
@@ -503,7 +519,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
                 drawings.filter((d) => d.type === "line").length + 1
               }`,
               type: "line" as const,
-              color: getRandomChartColor(),
+              color: "#4caf50", // Fixed green color instead of random
               series: [
                 {
                   id: seriesId,

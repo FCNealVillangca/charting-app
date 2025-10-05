@@ -39,21 +39,21 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     return findPointInDrawings(drawings, x, y, xTolerance, yTolerance);
   }, [drawings]);
 
-  const resetZoom = () => {
+  const resetZoom = useCallback(() => {
     console.log("Reset zoom clicked");
     chartRef.current?.resetZoom();
-  };
+  }, []);
 
-  const toggleCrosshair = () => {
+  const toggleCrosshair = useCallback(() => {
     // Simple crosshair toggle - just show an alert for now
     alert("Crosshair functionality coming soon!");
-  };
+  }, []);
 
-  const toggleDotMode = () => {
+  const toggleDotMode = useCallback(() => {
     setActiveTool(activeTool === "none" ? "dot" : "none");
-  };
+  }, [activeTool]);
 
-  const toggleLineMode = () => {
+  const toggleLineMode = useCallback(() => {
     if (activeTool === "line") {
       // When turning off line mode, remove any incomplete line drawings
       setDrawings((prev) => prev.filter((d) => !(d.type === "line" && d.metadata?.isIncomplete)));
@@ -61,7 +61,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     } else {
       setActiveTool("line");
     }
-  };
+  }, [activeTool]);
 
   const getIncompleteDrawingCallback = useCallback(() => {
     return getIncompleteDrawing(drawings, activeTool);

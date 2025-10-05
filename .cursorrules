@@ -1,0 +1,17 @@
+# Cursor Rules for Charting App
+
+## Context State Management
+- **NEVER** add new state to ChartContext unless absolutely necessary
+- ChartContext should only contain state that needs to be shared across multiple components
+- If only one component needs state, use local useState instead
+- Before adding state to context, ask: "Do at least 2 different components need this state?"
+
+## Component Architecture
+- Keep components focused and single-purpose
+- Use local state for component-specific data
+- Only use context for truly global state that multiple components need
+
+## Debugging Approach
+- When debugging issues, check component re-renders first
+- Look for state that's being reset unnecessarily
+- Check if the issue is in the component logic, not missing context state

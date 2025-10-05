@@ -21,7 +21,7 @@ export interface Series {
 export interface Drawing {
   id: string;
   name: string;
-  type: 'dot' | 'line' | 'trendline' | 'fibonacci' | 'channel' | 'rectangle';
+  type: 'dot' | 'triangle' | 'square' | 'circle' | 'diamond' | 'line' | 'trendline' | 'fibonacci' | 'channel' | 'rectangle';
   color: string;
   series: Series[];
   metadata?: Record<string, any>;
