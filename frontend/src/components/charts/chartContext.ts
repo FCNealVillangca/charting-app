@@ -12,7 +12,6 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [selectedData, setSelectedData] = useState<{ drawingId: string; seriesId: string; pointId: string } | null>(null);
   const [activeTool, setActiveTool] = useState<string>("none");
-  const [selectedDrawing, setSelectedDrawing] = useState<string | null>(null);
   const chartRef = useRef<BaseChartRef>(null);
 
   const addDrawing = useCallback((newDrawing: Drawing) => {
@@ -91,58 +90,10 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     setActiveTool("none"); // Auto-deselect tool when complete
   }, []);
 
-  const getMaxPointsForTool = useCallback((tool: string): number => {
-    switch (tool) {
-      case "line":
-        return 2;
-      case "trendline":
-        return 2;
-      case "fibonacci":
-        return 2;
-      case "channel":
-        return 3;
-      default:
-        return 0;
-    }
-  }, []);
-
-  const getRemainingPoints = useCallback(() => {
-    const incompleteDrawing = drawings.find((d) => d.metadata?.isIncomplete && d.type === activeTool);
-    const maxPoints = getMaxPointsForTool(activeTool);
-    
-    if (!incompleteDrawing) {
-      // No incomplete drawing, show max points needed
-      return maxPoints;
-    }
-    
-    // Calculate remaining points
-    const currentPoints = incompleteDrawing.series[0]?.points.length || 0;
-    return maxPoints - currentPoints;
-  }, [drawings, activeTool, getMaxPointsForTool]);
-
-  const selectDrawing = useCallback((drawingId: string | null) => {
-    setSelectedDrawing(drawingId);
-  }, []);
-
-  const updateDrawingName = useCallback((drawingId: string, name: string) => {
-    setDrawings((prev) =>
-      prev.map((d) => (d.id === drawingId ? { ...d, name } : d))
-    );
-  }, []);
-
-  const updateDrawingColor = useCallback((drawingId: string, color: string) => {
-    setDrawings((prev) =>
-      prev.map((d) => (d.id === drawingId ? { ...d, color } : d))
-    );
-  }, []);
-
   const deleteDrawing = useCallback((drawingId: string) => {
     setDrawings((prev) => prev.filter((d) => d.id !== drawingId));
-    if (selectedDrawing === drawingId) {
-      setSelectedDrawing(null);
-    }
     setSelectedData(null);
-  }, [selectedDrawing]);
+  }, []);
 
   const addPointToDrawing = useCallback((drawingId: string, seriesId: string, point: { x: number; y: number }) => {
     const pointId = `point_${Date.now()}_${Math.random()}`;
@@ -196,17 +147,12 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         resetZoom,
         toggleCrosshair,
         toggleDotMode,
-        selectedDrawing,
-        selectDrawing,
-        updateDrawingName,
-        updateDrawingColor,
         deleteDrawing,
         addPointToDrawing,
         removePoint,
         toggleLineMode,
         getIncompleteDrawing,
-        completeDrawing,
-        getRemainingPoints
+        completeDrawing
       }
     },
     children

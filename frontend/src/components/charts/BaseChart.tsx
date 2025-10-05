@@ -510,20 +510,28 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
                   ],
                 },
               ],
-              metadata: { isIncomplete: true },
+              metadata: { isIncomplete: true, maxPoints: 2 },
             };
 
             console.log("CREATING LINE:", newDrawing);
             addDrawing(newDrawing);
           } else {
-            // Second click - add second point and complete
-            console.log("COMPLETING LINE:", incompleteDrawing.id);
+            // Add point to incomplete drawing
+            console.log("ADDING POINT TO LINE:", incompleteDrawing.id);
             const seriesId = incompleteDrawing.series[0].id;
             addPointToDrawing(incompleteDrawing.id, seriesId, {
               x: xValue,
               y: yValue,
             });
-            completeDrawing(incompleteDrawing.id);
+            
+            // Check if we've reached the max points for this drawing
+            const currentPoints = incompleteDrawing.series[0].points.length + 1; // +1 for the point we just added
+            const maxPoints = incompleteDrawing.metadata?.maxPoints || 2;
+            
+            if (currentPoints >= maxPoints) {
+              console.log("COMPLETING LINE:", incompleteDrawing.id);
+              completeDrawing(incompleteDrawing.id);
+            }
           }
         }
       };

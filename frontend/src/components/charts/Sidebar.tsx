@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useContext } from "react";
+import { ChartContext } from "./chartContext";
 
 interface SidebarProps {
   activeTool?: string;
@@ -7,7 +8,6 @@ interface SidebarProps {
   onToggleDotMode?: () => void;
   onToggleLineMode?: () => void;
   onClearSeries?: () => void;
-  getRemainingPoints?: () => number;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -17,8 +17,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onToggleDotMode,
   onToggleLineMode,
   onClearSeries,
-  getRemainingPoints,
 }) => {
+  const chartContext = useContext(ChartContext);
+  const drawings = chartContext?.drawings || [];
   const buttonStyle = {
     width: "32px",
     height: "32px",
@@ -97,9 +98,14 @@ const Sidebar: React.FC<SidebarProps> = ({
             title="Line Drawing Tool"
             onClick={onToggleLineMode}
           >
-            {activeTool === "line" && getRemainingPoints
-              ? getRemainingPoints()
-              : "📏"}
+            {(() => {
+              if (activeTool !== "line") return "📏";
+              const incompleteDrawing = drawings.find((d) => d.metadata?.isIncomplete && d.type === activeTool);
+              if (!incompleteDrawing) return "📏";
+              const currentPoints = incompleteDrawing.series[0]?.points.length || 0;
+              const maxPoints = incompleteDrawing.metadata?.maxPoints || 2;
+              return maxPoints - currentPoints;
+            })()}
           </button>
         </div>
 

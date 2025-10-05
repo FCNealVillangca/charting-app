@@ -25,7 +25,6 @@ const ChartContainer: React.FC<ChartContainerProps> = ({ data }) => {
     toggleCrosshair,
     toggleDotMode,
     toggleLineMode,
-    getRemainingPoints,
   } = chartContext;
 
   return (
@@ -74,7 +73,6 @@ const ChartContainer: React.FC<ChartContainerProps> = ({ data }) => {
           onToggleDotMode={toggleDotMode}
           onToggleLineMode={toggleLineMode}
           onClearSeries={clearDrawings}
-          getRemainingPoints={getRemainingPoints}
         />
         <div className="chart-main">
           <div className="chart-content">
