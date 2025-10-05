@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router";
 import Home from "./pages/Home";
 import Pairs from "./pages/pairs/Pairs";
-import { ChartProvider } from "./components/charts/chartContext";
+import { ChartProvider } from "./components/charts/context";
 
 function App() {
   return (

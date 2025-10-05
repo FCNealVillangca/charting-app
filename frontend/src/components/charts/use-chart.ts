@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { ChartContext } from "./chartContext";
+import { ChartContext } from "./context";
 
 export const useChart = () => {
   const context = useContext(ChartContext);

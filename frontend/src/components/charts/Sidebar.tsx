@@ -1,8 +1,7 @@
 import React, { useContext } from "react";
-import { ChartContext } from "./chartContext";
+import { ChartContext } from "./context";
 
 interface SidebarProps {
-  activeTool?: string;
   onResetZoom?: () => void;
   onToggleCrosshair?: () => void;
   onToggleDotMode?: () => void;
@@ -11,7 +10,6 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
-  activeTool,
   onResetZoom,
   onToggleCrosshair,
   onToggleDotMode,
@@ -20,6 +18,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const chartContext = useContext(ChartContext);
   const drawings = chartContext?.drawings || [];
+  const activeTool = chartContext?.activeTool || "none";
   const buttonStyle = {
     width: "32px",
     height: "32px",
@@ -61,7 +60,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         }
       `}</style>
       <div className="chart-sidebar">
-        {/* Chart Tools */}
         <div style={{ marginBottom: "8px" }}>
           <button
             style={buttonStyle}
@@ -72,7 +70,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Dot Placement Tool */}
         <div style={{ marginBottom: "8px" }}>
           <button
             style={{
@@ -87,7 +84,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Line Drawing Tool */}
         <div style={{ marginBottom: "8px" }}>
           <button
             style={{
@@ -109,14 +105,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Essential Chart Controls */}
         <div style={{ marginBottom: "8px" }}>
           <button style={buttonStyle} title="Reset Zoom" onClick={onResetZoom}>
             🔄
           </button>
         </div>
 
-        {/* Series Controls */}
         <div style={{ marginBottom: "8px" }}>
           <button
             style={buttonStyle}
@@ -127,15 +121,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Help */}
         <div>
           <button
             style={buttonStyle}
-            title="Keyboard Shortcuts: + = Zoom In, - = Zoom Out, 0 = Reset, ← → = Pan"
+            title="Keyboard Shortcuts"
             onClick={() =>
-              alert(
-                "Keyboard Shortcuts:\n+ = Zoom In\n- = Zoom Out\n0 = Reset Zoom\n← → = Pan Left/Right"
-              )
+              alert("Keyboard Shortcuts:\n+ = Zoom In\n- = Zoom Out\n0 = Reset Zoom\n← → = Pan Left/Right")
             }
           >
             ❓

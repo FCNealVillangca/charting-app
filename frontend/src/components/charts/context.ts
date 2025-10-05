@@ -1,8 +1,16 @@
 import { createContext, useRef, useCallback } from "react";
 import React, { useState } from "react";
 import type { ReactNode } from "react";
-import type { ChartContextType, Drawing } from "./chartTypes";
-import type { BaseChartRef } from "./BaseChart";
+import type { ChartContextType, Drawing, BaseChartRef } from "./types";
+import {
+  updatePointInDrawings,
+  findPointInDrawings,
+  addPointToDrawing,
+  removePointFromDrawing,
+  deleteDrawingById,
+  completeDrawingById,
+  getIncompleteDrawing,
+} from "./utils";
 
 export const ChartContext = createContext<ChartContextType | undefined>(undefined);
 
@@ -24,37 +32,11 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const updatePoint = useCallback((drawingId: string, seriesId: string, pointId: string, x: number, y: number) => {
-    setDrawings((prev) =>
-      prev.map((d) =>
-        d.id === drawingId
-          ? {
-              ...d,
-              series: d.series.map((s) =>
-                s.id === seriesId
-                  ? {
-                      ...s,
-                      points: s.points.map((p) =>
-                        p.id === pointId ? { ...p, x, y } : p
-                      ),
-                    }
-                  : s
-              ),
-            }
-          : d
-      )
-    );
+    setDrawings((prev) => updatePointInDrawings(prev, drawingId, seriesId, pointId, x, y));
   }, []);
 
   const findPoints = useCallback((x: number, y: number, xTolerance: number = 10, yTolerance: number = 10): { drawingId: string; seriesId: string; pointId: string } | null => {
-    for (const d of drawings) {
-      for (const s of d.series) {
-        const point = s.points.find((p) => Math.abs(p.x - x) < xTolerance && Math.abs(p.y - y) < yTolerance);
-        if (point) {
-          return { drawingId: d.id, seriesId: s.id, pointId: point.id };
-        }
-      }
-    }
-    return null;
+    return findPointInDrawings(drawings, x, y, xTolerance, yTolerance);
   }, [drawings]);
 
   const resetZoom = () => {
@@ -72,62 +54,35 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const toggleLineMode = () => {
-    setActiveTool(activeTool === "none" ? "line" : "none");
+    if (activeTool === "line") {
+      // When turning off line mode, remove any incomplete line drawings
+      setDrawings((prev) => prev.filter((d) => !(d.type === "line" && d.metadata?.isIncomplete)));
+      setActiveTool("none");
+    } else {
+      setActiveTool("line");
+    }
   };
 
-  const getIncompleteDrawing = useCallback(() => {
-    return drawings.find((d) => d.metadata?.isIncomplete && d.type === activeTool);
+  const getIncompleteDrawingCallback = useCallback(() => {
+    return getIncompleteDrawing(drawings, activeTool);
   }, [drawings, activeTool]);
 
   const completeDrawing = useCallback((drawingId: string) => {
-    setDrawings((prev) =>
-      prev.map((d) =>
-        d.id === drawingId
-          ? { ...d, metadata: { ...d.metadata, isIncomplete: false } }
-          : d
-      )
-    );
+    setDrawings((prev) => completeDrawingById(prev, drawingId));
     setActiveTool("none"); // Auto-deselect tool when complete
   }, []);
 
   const deleteDrawing = useCallback((drawingId: string) => {
-    setDrawings((prev) => prev.filter((d) => d.id !== drawingId));
+    setDrawings((prev) => deleteDrawingById(prev, drawingId));
     setSelectedData(null);
   }, []);
 
-  const addPointToDrawing = useCallback((drawingId: string, seriesId: string, point: { x: number; y: number }) => {
-    const pointId = `point_${Date.now()}_${Math.random()}`;
-    setDrawings((prev) =>
-      prev.map((d) =>
-        d.id === drawingId
-          ? {
-              ...d,
-              series: d.series.map((s) =>
-                s.id === seriesId
-                  ? { ...s, points: [...s.points, { id: pointId, ...point }] }
-                  : s
-              ),
-            }
-          : d
-      )
-    );
+  const addPointToDrawingCallback = useCallback((drawingId: string, seriesId: string, point: { x: number; y: number }) => {
+    setDrawings((prev) => addPointToDrawing(prev, drawingId, seriesId, point));
   }, []);
 
   const removePoint = useCallback((drawingId: string, seriesId: string, pointId: string) => {
-    setDrawings((prev) =>
-      prev.map((d) =>
-        d.id === drawingId
-          ? {
-              ...d,
-              series: d.series.map((s) =>
-                s.id === seriesId
-                  ? { ...s, points: s.points.filter((p) => p.id !== pointId) }
-                  : s
-              ),
-            }
-          : d
-      )
-    );
+    setDrawings((prev) => removePointFromDrawing(prev, drawingId, seriesId, pointId));
   }, []);
 
   return React.createElement(
@@ -148,10 +103,10 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         toggleCrosshair,
         toggleDotMode,
         deleteDrawing,
-        addPointToDrawing,
+        addPointToDrawing: addPointToDrawingCallback,
         removePoint,
         toggleLineMode,
-        getIncompleteDrawing,
+        getIncompleteDrawing: getIncompleteDrawingCallback,
         completeDrawing
       }
     },

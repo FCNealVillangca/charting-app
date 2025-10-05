@@ -11,8 +11,10 @@ import Highcharts from "highcharts";
 import "highcharts/highcharts-more";
 import "highcharts/modules/stock";
 import type { DataPoint } from "./types";
-import { ChartContext } from "./chartContext";
-import { getRandomChartColor } from "./colorUtils";
+import { ChartContext } from "./context";
+import { getRandomChartColor } from "./utils";
+import SeriesSidebar from "./series-sidebar";
+import Sidebar from "./sidebar";
 
 // Exposed imperative API
 export interface BaseChartRef {
@@ -21,16 +23,15 @@ export interface BaseChartRef {
   clearSeries: () => void;
 }
 
-interface BaseChartProps {
+interface ChartProps {
   data: DataPoint[];
   width?: number;
   height?: number;
   onChartCreated?: (chart: HTMLDivElement) => void;
-  activeTool?: string;
 }
 
-const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
-  ({ data, onChartCreated, activeTool = "none" }, ref) => {
+const Chart = forwardRef<BaseChartRef, ChartProps>(
+  ({ data, onChartCreated }, ref) => {
     const chartRef = useRef<HTMLDivElement | null>(null);
     const chartInstance = useRef<Highcharts.Chart | null>(null);
     const {
@@ -44,6 +45,11 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
       getIncompleteDrawing,
       completeDrawing,
       addPointToDrawing,
+      resetZoom,
+      toggleCrosshair,
+      toggleDotMode,
+      toggleLineMode,
+      activeTool,
     } = useContext(ChartContext)!;
     const [tooltipData, setTooltipData] = useState<{
       visible: boolean;
@@ -274,14 +280,14 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
       [highchartsData, drawings, chartData, activeTool, selectedData]
     );
 
-    const resetZoom = () => {
+    const resetZoomChart = () => {
       if (chartInstance.current) {
         chartInstance.current.zoomOut();
       }
     };
 
     useImperativeHandle(ref, () => ({
-      resetZoom,
+      resetZoom: resetZoomChart,
       getChart: () => chartInstance.current,
       clearSeries: clearDrawings,
     }));
@@ -575,107 +581,157 @@ const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(
     ]);
 
     return (
-      <div style={{ position: "relative", width: "100%", height: "100%" }}>
-        <div
-          ref={chartRef}
-          style={{ position: "relative", width: "100%", height: "100%" }}
-        />
-        {tooltipData.visible && tooltipData.data && (
-          <div
-            style={{
-              position: "fixed",
-              left: tooltipData.x,
-              top: tooltipData.y,
-              backgroundColor: "rgba(0, 0, 0, 0.8)",
-              border: "1px solid #333",
-              borderRadius: "4px",
-              padding: "8px",
-              minWidth: "120px",
-              color: "#fff",
-              fontSize: "12px",
-              fontFamily: "monospace",
-              zIndex: 1000,
-              pointerEvents: "none",
-            }}
-          >
-            <div
-              style={{ fontWeight: "bold", marginBottom: "4px", color: "#fff" }}
-            >
-              {new Date(tooltipData.data.time * 1000).toLocaleDateString(
-                "en-US",
-                {
-                  month: "short",
-                  day: "numeric",
-                }
-              )}{" "}
-              {new Date(tooltipData.data.time * 1000).toLocaleTimeString(
-                "en-US",
-                {
-                  hour12: false,
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }
-              )}
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                margin: "2px 0",
-              }}
-            >
-              <span style={{ color: "#888" }}>O:</span>
-              <span style={{ color: "#fff" }}>
-                {tooltipData.data.open.toFixed(5)}
-              </span>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                margin: "2px 0",
-              }}
-            >
-              <span style={{ color: "#888" }}>H:</span>
-              <span style={{ color: "#4caf50" }}>
-                {tooltipData.data.high.toFixed(5)}
-              </span>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                margin: "2px 0",
-              }}
-            >
-              <span style={{ color: "#888" }}>L:</span>
-              <span style={{ color: "#f44336" }}>
-                {tooltipData.data.low.toFixed(5)}
-              </span>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                margin: "2px 0",
-              }}
-            >
-              <span style={{ color: "#888" }}>C:</span>
-              <span style={{ color: "#fff" }}>
-                {tooltipData.data.close.toFixed(5)}
-              </span>
-            </div>
-          </div>
-        )}
+      <>
         <style>{`
+          .chart-container {
+            display: flex;
+            height: 100%;
+            width: 100%;
+          }
+          .chart-main {
+            flex: 1;
+            margin-left: 8px;
+            position: relative;
+            height: 100%;
+            display: flex;
+          }
+          .chart-content {
+            flex: 1;
+            position: relative;
+          }
+          @media (max-width: 768px) {
+            .chart-container {
+              flex-direction: column;
+            }
+            .chart-main {
+              margin-left: 0;
+              margin-top: 8px;
+              flex-direction: column;
+            }
+            .chart-content {
+              height: 60vh;
+            }
+          }
+          @media (max-width: 480px) {
+            .chart-content {
+              height: 50vh;
+            }
+          }
           .highcharts-reset-zoom {
             display: none !important;
           }
         `}</style>
-      </div>
+        <div className="chart-container">
+          <Sidebar
+            onResetZoom={resetZoom}
+            onToggleCrosshair={toggleCrosshair}
+            onToggleDotMode={toggleDotMode}
+            onToggleLineMode={toggleLineMode}
+            onClearSeries={clearDrawings}
+          />
+          <div className="chart-main">
+            <div className="chart-content">
+              <div style={{ position: "relative", width: "100%", height: "100%" }}>
+                <div
+                  ref={chartRef}
+                  style={{ position: "relative", width: "100%", height: "100%" }}
+                />
+                {tooltipData.visible && tooltipData.data && (
+                  <div
+                    style={{
+                      position: "fixed",
+                      left: tooltipData.x,
+                      top: tooltipData.y,
+                      backgroundColor: "rgba(0, 0, 0, 0.8)",
+                      border: "1px solid #333",
+                      borderRadius: "4px",
+                      padding: "8px",
+                      minWidth: "120px",
+                      color: "#fff",
+                      fontSize: "12px",
+                      fontFamily: "monospace",
+                      zIndex: 1000,
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <div
+                      style={{ fontWeight: "bold", marginBottom: "4px", color: "#fff" }}
+                    >
+                      {new Date(tooltipData.data.time * 1000).toLocaleDateString(
+                        "en-US",
+                        {
+                          month: "short",
+                          day: "numeric",
+                        }
+                      )}{" "}
+                      {new Date(tooltipData.data.time * 1000).toLocaleTimeString(
+                        "en-US",
+                        {
+                          hour12: false,
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        margin: "2px 0",
+                      }}
+                    >
+                      <span style={{ color: "#888" }}>O:</span>
+                      <span style={{ color: "#fff" }}>
+                        {tooltipData.data.open.toFixed(5)}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        margin: "2px 0",
+                      }}
+                    >
+                      <span style={{ color: "#888" }}>H:</span>
+                      <span style={{ color: "#4caf50" }}>
+                        {tooltipData.data.high.toFixed(5)}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        margin: "2px 0",
+                      }}
+                    >
+                      <span style={{ color: "#888" }}>L:</span>
+                      <span style={{ color: "#f44336" }}>
+                        {tooltipData.data.low.toFixed(5)}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        margin: "2px 0",
+                      }}
+                    >
+                      <span style={{ color: "#888" }}>C:</span>
+                      <span style={{ color: "#fff" }}>
+                        {tooltipData.data.close.toFixed(5)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <SeriesSidebar />
+          </div>
+        </div>
+      </>
     );
   }
 );
 
-BaseChart.displayName = "BaseChart";
-export default BaseChart;
+Chart.displayName = "Chart";
+export default Chart;
