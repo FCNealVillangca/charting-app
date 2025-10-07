@@ -16,23 +16,49 @@ const SidebarScatterButton: React.FC = () => {
   const getShapeIcon = (shape: string) => {
     switch (shape) {
       case "dot":
-        return "•";
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="8" cy="8" r="2"/>
+          </svg>
+        );
       case "triangle":
-        return "▲";
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M8 2 L14 12 L2 12 Z"/>
+          </svg>
+        );
       case "square":
-        return "■";
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <rect x="3" y="3" width="10" height="10"/>
+          </svg>
+        );
       case "circle":
-        return "●";
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="8" cy="8" r="5"/>
+          </svg>
+        );
       case "diamond":
-        return "◆";
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M8 2 L14 8 L8 14 L2 8 Z"/>
+          </svg>
+        );
       default:
-        return "•";
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="8" cy="8" r="2"/>
+          </svg>
+        );
     }
   };
 
   const handleMainButtonClick = () => {
-    // Always activate dot mode with the currently selected shape
-    if (activeTool !== selectedShape) {
+    // Toggle the drawing mode for the selected shape
+    if (activeTool === selectedShape) {
+      chartContext?.setActiveTool("none");
+    } else {
       chartContext?.setActiveTool(selectedShape);
     }
   };
@@ -44,41 +70,66 @@ const SidebarScatterButton: React.FC = () => {
     chartContext?.setActiveTool(shape);
   };
 
+  const isActive = activeTool === selectedShape;
+
   return (
-    <div className="mb-2 flex flex-row">
+    <div className="flex flex-row">
       <button
-        className={`w-8 h-8 border border-gray-300 rounded cursor-pointer flex items-center justify-center text-base mx-0.5 ${
-          activeTool === selectedShape ? "bg-green-500 text-white" : "bg-white text-black"
-        }`}
+        className={`w-8 h-8 flex items-center justify-center
+           ${
+          isActive 
+            ? "bg-green-500 border-green-500 text-white shadow-md" 
+            : "bg-white border-gray-300 text-gray-800 hover:shadow-md hover:border-gray-400"
+        }
+        `}
         title="Toggle Dot Placement"
         onClick={handleMainButtonClick}
       >
         {getShapeIcon(selectedShape)}
       </button>
-      <DropdownMenu>
+      {/* <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="w-6 h-8 border-l border-gray-300 rounded-r bg-white cursor-pointer flex items-center justify-center text-sm">
+          <button className={`w-6 h-8 border border-l-0 rounded-r-lg shadow-sm cursor-pointer flex items-center justify-center text-xs font-bold transition-all duration-200 ${
+            isActive 
+              ? "bg-green-500 border-green-500 text-white" 
+              : "bg-white border-gray-300 text-gray-800 hover:shadow-md hover:border-gray-400"
+          }`}>
             ›
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => handleShapeSelect("dot")}>
-            <span className="mr-2">•</span> Dot
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="mr-2">
+              <circle cx="8" cy="8" r="2"/>
+            </svg>
+            Dot
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleShapeSelect("triangle")}>
-            <span className="mr-2">▲</span> Triangle
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="mr-2">
+              <path d="M8 2 L14 12 L2 12 Z"/>
+            </svg>
+            Triangle
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleShapeSelect("square")}>
-            <span className="mr-2">■</span> Square
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="mr-2">
+              <rect x="3" y="3" width="10" height="10"/>
+            </svg>
+            Square
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleShapeSelect("circle")}>
-            <span className="mr-2">●</span> Circle
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="mr-2">
+              <circle cx="8" cy="8" r="5"/>
+            </svg>
+            Circle
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleShapeSelect("diamond")}>
-            <span className="mr-2">◆</span> Diamond
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="mr-2">
+              <path d="M8 2 L14 8 L8 14 L2 8 Z"/>
+            </svg>
+            Diamond
           </DropdownMenuItem>
         </DropdownMenuContent>
-      </DropdownMenu>
+      </DropdownMenu> */}
     </div>
   );
 };

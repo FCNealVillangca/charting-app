@@ -19,6 +19,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [selectedData, setSelectedData] = useState<{ drawingId: string; seriesId: string; pointId: string } | null>(null);
+  const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<string>("none");
   const chartRef = useRef<BaseChartRef>(null);
 
@@ -29,6 +30,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   const clearDrawings = useCallback(() => {
     setDrawings([]);
     setSelectedData(null);
+    setSelectedDrawingId(null);
   }, []);
 
   const updatePoint = useCallback((drawingId: string, seriesId: string, pointId: string, x: number, y: number) => {
@@ -75,6 +77,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   const deleteDrawing = useCallback((drawingId: string) => {
     setDrawings((prev) => deleteDrawingById(prev, drawingId));
     setSelectedData(null);
+    setSelectedDrawingId(null);
   }, []);
 
   const addPointToDrawingCallback = useCallback((drawingId: string, seriesId: string, point: { x: number; y: number }) => {
@@ -85,6 +88,12 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     setDrawings((prev) => removePointFromDrawing(prev, drawingId, seriesId, pointId));
   }, []);
 
+  const updateDrawing = useCallback((drawingId: string, updates: Partial<Drawing>) => {
+    setDrawings((prev) => prev.map((drawing) => 
+      drawing.id === drawingId ? { ...drawing, ...updates } : drawing
+    ));
+  }, []);
+
   return React.createElement(
     ChartContext.Provider,
     {
@@ -93,8 +102,11 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         addDrawing,
         clearDrawings,
         updatePoint,
+        updateDrawing,
         selectedData,
         setSelectedData,
+        selectedDrawingId,
+        setSelectedDrawingId,
         findPoints,
         chartRef,
         activeTool,

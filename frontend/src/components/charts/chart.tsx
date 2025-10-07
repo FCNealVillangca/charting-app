@@ -12,7 +12,6 @@ import "highcharts/highcharts-more";
 import "highcharts/modules/stock";
 import type { DataPoint } from "./types";
 import { ChartContext } from "./context";
-import { getRandomChartColor } from "./utils";
 import SeriesSidebar from "./series-sidebar";
 import Sidebar from "./sidebar";
 
@@ -41,14 +40,11 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       updatePoint,
       selectedData,
       setSelectedData,
+      setSelectedDrawingId,
       findPoints,
       getIncompleteDrawing,
       completeDrawing,
       addPointToDrawing,
-      resetZoom,
-      toggleCrosshair,
-      toggleDotMode,
-      toggleLineMode,
       activeTool,
     } = useContext(ChartContext)!;
     const [tooltipData, setTooltipData] = useState<{
@@ -468,6 +464,10 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
             // Find and select series at the point
             if (foundPoint) {
               setSelectedData(foundPoint);
+              setSelectedDrawingId(foundPoint.drawingId);
+            } else {
+              // Clicked on empty space - deselect drawing
+              setSelectedDrawingId(null);
             }
           }
         } else if (activeTool === "dot" || activeTool === "triangle" || activeTool === "square" || activeTool === "circle" || activeTool === "diamond") {
@@ -591,6 +591,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       findPoints,
       updatePoint,
       setSelectedData,
+      setSelectedDrawingId,
       getIncompleteDrawing,
       completeDrawing,
       addPointToDrawing,
@@ -638,13 +639,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           }
         `}</style>
         <div className="chart-container">
-          <Sidebar
-            onResetZoom={resetZoom}
-            onToggleCrosshair={toggleCrosshair}
-            onToggleDotMode={toggleDotMode}
-            onToggleLineMode={toggleLineMode}
-            onClearSeries={clearDrawings}
-          />
+          <Sidebar />
           <div className="chart-main">
             <div className="chart-content">
               <div style={{ position: "relative", width: "100%", height: "100%" }}>

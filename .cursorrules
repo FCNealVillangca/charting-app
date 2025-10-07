@@ -11,6 +11,12 @@
 - Use local state for component-specific data
 - Only use context for truly global state that multiple components need
 
+## Styling Rules
+- **ALWAYS use Tailwind CSS classes** instead of inline styles
+- Use `className` prop, not `style={{}}` prop
+- Only use inline styles for dynamic values that can't be achieved with Tailwind
+- Keep styling consistent with Tailwind's design system
+
 ## Debugging Approach
 - When debugging issues, check component re-renders first
 - Look for state that's being reset unnecessarily

@@ -32,8 +32,11 @@ export interface ChartContextType {
   addDrawing: (drawing: Drawing) => void;
   clearDrawings: () => void;
   updatePoint: (drawingId: string, seriesId: string, pointId: string, x: number, y: number) => void;
+  updateDrawing: (drawingId: string, updates: Partial<Drawing>) => void;
   selectedData: { drawingId: string; seriesId: string; pointId: string } | null;
   setSelectedData: (point: { drawingId: string; seriesId: string; pointId: string } | null) => void;
+  selectedDrawingId: string | null;
+  setSelectedDrawingId: (drawingId: string | null) => void;
   findPoints: (x: number, y: number, xTolerance?: number, yTolerance?: number) => { drawingId: string; seriesId: string; pointId: string } | null;
   chartRef: React.RefObject<BaseChartRef | null>;
   activeTool: string;

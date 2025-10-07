@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useContext, useMemo } from "react";
 import PairSelectorDialog from "./PairSelectorDialog";
+import { ChartContext } from "./charts/context";
+import DrawingEditorDialog from "./charts/DrawingEditorDialog";
 
 interface NavigationBarProps {
   currentPair?: string;
@@ -11,10 +13,26 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
   onPairChange,
 }) => {
   const [isPairDialogOpen, setIsPairDialogOpen] = useState(false);
+  const [isDrawingDialogOpen, setIsDrawingDialogOpen] = useState(false);
+  
+  const chartContext = useContext(ChartContext);
+  const { selectedDrawingId, drawings, updateDrawing } = chartContext || {};
+
+  // Derive the selected drawing from selectedDrawingId
+  const selectedDrawing = useMemo(() => {
+    if (!selectedDrawingId || !drawings) return null;
+    return drawings.find((d) => d.id === selectedDrawingId) || null;
+  }, [selectedDrawingId, drawings]);
 
   const handlePairSelect = (pair: string) => {
     onPairChange?.(pair);
     setIsPairDialogOpen(false);
+  };
+
+  const handleDrawingSave = (drawingId: string, updates: any) => {
+    if (updateDrawing) {
+      updateDrawing(drawingId, updates);
+    }
   };
 
   return (
@@ -85,6 +103,53 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
 
       {/* Right side controls */}
       <div style={{ marginLeft: "auto", display: "flex", gap: "8px" }}>
+        {selectedDrawing && (
+          <>
+            <button
+              onClick={() => setIsDrawingDialogOpen(true)}
+              style={{
+                backgroundColor: "#f9fafb",
+                border: "1px solid #d1d5db",
+                borderRadius: "6px",
+                color: "#111827",
+                padding: "6px 12px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <span>🎨</span>
+              <span>Edit Drawing</span>
+            </button>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "6px 12px",
+                backgroundColor: "#f9fafb",
+                border: "1px solid #d1d5db",
+                borderRadius: "6px",
+                fontSize: "13px",
+              }}
+            >
+              <span style={{ color: "#6b7280" }}>{selectedDrawing.name}</span>
+              <div
+                style={{
+                  width: "20px",
+                  height: "20px",
+                  backgroundColor: selectedDrawing.color,
+                  border: "2px solid #fff",
+                  borderRadius: "4px",
+                  boxShadow: "0 0 0 1px rgba(0, 0, 0, 0.1)",
+                }}
+              />
+            </div>
+          </>
+        )}
         <button
           style={{
             backgroundColor: "transparent",
@@ -119,6 +184,15 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
         onSelectPair={handlePairSelect}
         currentPair={currentPair}
       />
+
+      {selectedDrawing && (
+        <DrawingEditorDialog
+          isOpen={isDrawingDialogOpen}
+          onClose={() => setIsDrawingDialogOpen(false)}
+          drawing={selectedDrawing}
+          onSave={handleDrawingSave}
+        />
+      )}
     </div>
   );
 };
