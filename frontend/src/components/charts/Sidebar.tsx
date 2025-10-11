@@ -8,7 +8,7 @@ import SidebarShortcutsButton from "./sidebar-shortcuts-button";
 
 const Sidebar: React.FC = () => {
   return (
-    <div className="w-12 p-2 border-r border-gray-300 bg-gray-100 flex flex-col items-center">
+    <div className="bg-gray-100 border-r border-gray-300 flex flex-col items-start py-2 gap-2 pl-4">
       <SidebarCrosshairButton />
       <SidebarScatterButton />
       <SidebarLineButton />

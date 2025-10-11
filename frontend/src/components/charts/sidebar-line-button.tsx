@@ -36,11 +36,7 @@ const SidebarLineButton: React.FC = () => {
 
   return (
     <button
-      className={`w-8 h-8 border rounded-lg shadow-sm cursor-pointer flex items-center justify-center text-base font-bold transition-all duration-200 ${
-        isActive 
-          ? "bg-blue-500 border-blue-500 text-white shadow-md" 
-          : "bg-white border-gray-300 text-gray-800 hover:shadow-md hover:border-gray-400"
-      }`}
+      className={`h-8 w-8 flex items-center justify-center ${isActive ? "bg-gray-400" : "bg-white"}`}
       title="Line Drawing Tool"
       onClick={toggleLineMode}
     >
