@@ -14,6 +14,15 @@ import type { DataPoint } from "./types";
 import { ChartContext } from "./context";
 import SeriesSidebar from "./series-sidebar";
 import Sidebar from "./sidebar";
+import { renderDrawingSeries } from "./chart-renderers";
+import {
+  createHandleMouseMove,
+  createHandleMouseLeave,
+  createHandleMouseUp,
+  createHandleMouseDown,
+  createHandleKeyDown,
+  createHandleWheel,
+} from "./chart-events";
 
 // Exposed imperative API
 export interface BaseChartRef {
@@ -42,7 +51,6 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       setSelectedData,
       setSelectedDrawingId,
       findPoints,
-      getIncompleteDrawing,
       completeDrawing,
       addPointToDrawing,
       activeTool,
@@ -153,96 +161,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
             colorByPoint: false,
             showInLegend: false,
           } as Highcharts.SeriesCandlestickOptions,
-          ...drawings.flatMap((drawing) =>
-            drawing.series.map((s, index) => {
-              // For lines, only render if we have at least 2 points OR if it's incomplete with 1 point (show as scatter)
-              if (drawing.type === "line") {
-                if (s.points.length >= 2) {
-                  // Complete line - render as line
-                  return {
-                    type: "line" as const,
-                    name: `${drawing.name} - ${index + 1}`,
-                    data: s.points.map((p) => [p.x, p.y]),
-                    color: drawing.color || "#ff6b35",
-                    marker: {
-                      radius: 4,
-                      fillColor: drawing.color || "#ff6b35",
-                      lineColor: "#fff",
-                      lineWidth: 2,
-                      states: {
-                        hover: {
-                          enabled: false,
-                        },
-                      },
-                    },
-                    lineWidth: 2,
-                    showInLegend: false,
-                    enableMouseTracking: true,
-                  } as Highcharts.SeriesLineOptions;
-                } else {
-                  // Incomplete line - render first point as scatter
-                  return {
-                    type: "scatter" as const,
-                    name: `${drawing.name} - ${index + 1}`,
-                    data: s.points.map((p) => [p.x, p.y]),
-                    color: drawing.color || "#ff6b35",
-                    marker: {
-                      radius: 4,
-                      fillColor: drawing.color || "#ff6b35",
-                      lineColor: "#fff",
-                      lineWidth: 2,
-                      states: {
-                        hover: {
-                          enabled: false,
-                        },
-                      },
-                    },
-                    lineWidth: 0,
-                    showInLegend: false,
-                    enableMouseTracking: true,
-                  } as Highcharts.SeriesScatterOptions;
-                }
-              } else {
-                // Other drawing types (dots, triangles, squares, etc.)
-                const getMarkerSymbol = (drawingType: string) => {
-                  switch (drawingType) {
-                    case "triangle":
-                      return "triangle";
-                    case "square":
-                      return "square";
-                    case "circle":
-                      return "circle";
-                    case "diamond":
-                      return "diamond";
-                    default:
-                      return "circle"; // Default to circle for dot
-                  }
-                };
-
-                return {
-                  type: "scatter" as const,
-                  name: `${drawing.name} - ${index + 1}`,
-                  data: s.points.map((p) => [p.x, p.y]),
-                  color: drawing.color || "#4caf50",
-                  marker: {
-                    radius: 6,
-                    symbol: getMarkerSymbol(drawing.type),
-                    fillColor: drawing.color || "#4caf50",
-                    lineColor: "#fff",
-                    lineWidth: 2,
-                    states: {
-                      hover: {
-                        enabled: false,
-                      },
-                    },
-                  },
-                  lineWidth: 0,
-                  showInLegend: false,
-                  enableMouseTracking: true,
-                } as Highcharts.SeriesScatterOptions;
-              }
-            })
-          ),
+          ...renderDrawingSeries(drawings),
         ],
         plotOptions: {
           candlestick: {
@@ -335,228 +254,34 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         }
       };
 
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (!chartInstance.current) return;
-
-        const xAxis = chartInstance.current.xAxis[0];
-        const extremes = xAxis.getExtremes();
-        const panStep = (extremes.max - extremes.min) / 10; // Pan 10% of current range
-
-        switch (e.key) {
-          case "ArrowLeft":
-            e.preventDefault();
-            xAxis.setExtremes(extremes.min - panStep, extremes.max - panStep);
-            break;
-          case "ArrowRight":
-            e.preventDefault();
-            xAxis.setExtremes(extremes.min + panStep, extremes.max + panStep);
-            break;
-          case "Home":
-            e.preventDefault();
-            // Reset to show all data
-            xAxis.setExtremes(undefined, undefined);
-            break;
-        }
-      };
-
-      const handleWheel = (e: WheelEvent) => {
-        if (!chartInstance.current) return;
-
-        // Check if Shift key is held down
-        if (e.shiftKey) {
-          e.preventDefault();
-
-          const xAxis = chartInstance.current.xAxis[0];
-          const extremes = xAxis.getExtremes();
-          const panStep = (extremes.max - extremes.min) / 20; // Pan 5% of current range
-
-          // Determine pan direction based on wheel delta
-          const panAmount = e.deltaY > 0 ? panStep : -panStep;
-
-          xAxis.setExtremes(extremes.min + panAmount, extremes.max + panAmount);
-        }
-      };
-
-      const handleMouseMove = (e: MouseEvent) => {
-        if (!chartInstance.current) return;
-
-        const chart = chartInstance.current;
-        const xAxis = chart.xAxis[0];
-
-        // Get mouse position relative to chart
-        const rect = chart.container.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-
-        // Show tooltip
-        const xValue = xAxis.toValue(x);
-        const index = Math.round(xValue);
-        if (index >= 0 && index < chartData.length) {
-          const dataPoint = chartData[index];
-          setTooltipData({
-            visible: true,
-            x: rect.left + 10, // Upper left of chart
-            y: rect.top + 10,
-            data: dataPoint,
-          });
-        }
-
-        // Set cursor
-        if (selectedData) {
-          document.body.style.cursor = "grab";
-        } else {
-          document.body.style.cursor = "";
-        }
-      };
-
-      const handleMouseLeave = () => {
-        setTooltipData({ visible: false, x: 0, y: 0, data: null });
-        document.body.style.cursor = "";
-      };
-
-      const handleMouseUp = (e: MouseEvent) => {
-        if (!chartInstance.current || !selectedData) return;
-
-        const chart = chartInstance.current;
-        const xAxis = chart.xAxis[0];
-        const yAxis = chart.yAxis[0];
-
-        // Get mouse position relative to chart
-        const rect = chart.container.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        // Convert to axis values
-        const xValue = xAxis.toValue(x);
-        const yValue = yAxis.toValue(y);
-
-        // Update the selected point position and deselect
-        updatePoint(
-          selectedData.drawingId,
-          selectedData.seriesId,
-          selectedData.pointId,
-          xValue,
-          yValue
-        );
-        setSelectedData(null);
-        e.preventDefault(); // Prevent zoom
-      };
-
-      const handleMouseDown = (e: MouseEvent) => {
-        if (!chartInstance.current) return;
-
-        const chart = chartInstance.current;
-        const xAxis = chart.xAxis[0];
-        const yAxis = chart.yAxis[0];
-
-        // Get mouse position relative to chart
-        const rect = chart.container.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        // Convert to axis values
-        const xValue = xAxis.toValue(x);
-        const yValue = yAxis.toValue(y);
-        const foundPoint = findPoints(xValue, yValue);
-
-        if (activeTool === "none" || activeTool === null) {
-          e.preventDefault(); // Prevent zoom selection
-          if (!selectedData) {
-            // Find and select series at the point
-            if (foundPoint) {
-              setSelectedData(foundPoint);
-              setSelectedDrawingId(foundPoint.drawingId);
-            } else {
-              // Clicked on empty space - deselect drawing
-              setSelectedDrawingId(null);
-            }
-          }
-        } else if (activeTool === "dot" || activeTool === "triangle" || activeTool === "square" || activeTool === "circle" || activeTool === "diamond") {
-          e.preventDefault(); // Prevent zoom
-          // Create a new drawing with a single point
-          const drawingNumber = drawings.length + 1;
-          const newDrawing = {
-            id: `drawing_${Date.now()}_${Math.random()}`,
-            name: `Point ${drawingNumber}`,
-            type: activeTool as any, // Use the active tool as the drawing type
-            color: "#4caf50", // Fixed green color instead of random
-            series: [
-              {
-                id: `series_${Date.now()}_${Math.random()}`,
-                points: [
-                  {
-                    id: `point_${Date.now()}_${Math.random()}`,
-                    x: xValue,
-                    y: yValue,
-                  },
-                ],
-              },
-            ],
-          };
-
-          addDrawing(newDrawing);
-        } else if (activeTool === "line") {
-          e.preventDefault(); // Prevent zoom
-
-          // Find incomplete line drawing directly from current drawings state
-          const incompleteDrawing = drawings.find(
-            (d) => d.metadata?.isIncomplete && d.type === "line"
-          );
-
-          console.log("LINE CLICK:", {
-            incompleteDrawing,
-            allDrawings: drawings,
-            activeTool,
-          });
-
-          if (!incompleteDrawing) {
-            // First click - create line with first point
-            const drawingId = `drawing_${Date.now()}_${Math.random()}`;
-            const seriesId = `series_${Date.now()}_${Math.random()}`;
-
-            const newDrawing = {
-              id: drawingId,
-              name: `Line ${
-                drawings.filter((d) => d.type === "line").length + 1
-              }`,
-              type: "line" as const,
-              color: "#4caf50", // Fixed green color instead of random
-              series: [
-                {
-                  id: seriesId,
-                  points: [
-                    {
-                      id: `point_${Date.now()}_${Math.random()}`,
-                      x: xValue,
-                      y: yValue,
-                    },
-                  ],
-                },
-              ],
-              metadata: { isIncomplete: true, maxPoints: 2 },
-            };
-
-            console.log("CREATING LINE:", newDrawing);
-            addDrawing(newDrawing);
-          } else {
-            // Add point to incomplete drawing
-            console.log("ADDING POINT TO LINE:", incompleteDrawing.id);
-            const seriesId = incompleteDrawing.series[0].id;
-            addPointToDrawing(incompleteDrawing.id, seriesId, {
-              x: xValue,
-              y: yValue,
-            });
-            
-            // Check if we've reached the max points for this drawing
-            const currentPoints = incompleteDrawing.series[0].points.length + 1; // +1 for the point we just added
-            const maxPoints = incompleteDrawing.metadata?.maxPoints || 2;
-            
-            if (currentPoints >= maxPoints) {
-              console.log("COMPLETING LINE:", incompleteDrawing.id);
-              completeDrawing(incompleteDrawing.id);
-            }
-          }
-        }
-      };
+      // Create all event handlers
+      const handleMouseMove = createHandleMouseMove(
+        chartInstance,
+        chartData,
+        selectedData,
+        setTooltipData
+      );
+      const handleMouseLeave = createHandleMouseLeave(setTooltipData);
+      const handleMouseUp = createHandleMouseUp(
+        chartInstance,
+        selectedData,
+        updatePoint,
+        setSelectedData
+      );
+      const handleMouseDown = createHandleMouseDown(
+        chartInstance,
+        activeTool,
+        drawings,
+        selectedData,
+        findPoints,
+        setSelectedData,
+        setSelectedDrawingId,
+        addDrawing,
+        addPointToDrawing,
+        completeDrawing
+      );
+      const handleKeyDown = createHandleKeyDown(chartInstance);
+      const handleWheel = createHandleWheel(chartInstance);
 
       window.addEventListener("resize", handleResize);
       window.addEventListener("keydown", handleKeyDown);
@@ -564,7 +289,9 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       // Add event listeners to the chart container
       const chartElement = chartRef.current;
       if (chartElement) {
-        chartElement.addEventListener("wheel", handleWheel, { passive: false });
+        chartElement.addEventListener("wheel", handleWheel, {
+          passive: false,
+        });
         chartElement.addEventListener("mousemove", handleMouseMove);
         chartElement.addEventListener("mouseleave", handleMouseLeave);
         chartElement.addEventListener("mousedown", handleMouseDown);
@@ -592,9 +319,8 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       updatePoint,
       setSelectedData,
       setSelectedDrawingId,
-      getIncompleteDrawing,
-      completeDrawing,
       addPointToDrawing,
+      completeDrawing,
     ]);
 
     return (
