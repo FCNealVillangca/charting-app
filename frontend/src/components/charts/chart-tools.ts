@@ -1,4 +1,8 @@
 import type { Drawing } from "./chart-types";
+import {
+  calculatePerpendicularDistance,
+  calculateParallelLine,
+} from "./chart-utils";
 
 export interface ToolHandlerParams {
   xValue: number;
@@ -22,6 +26,7 @@ export interface ToolHandlerParams {
     point: { x: number; y: number }
   ) => void;
   completeDrawing: (drawingId: string) => void;
+  updateDrawing?: (drawingId: string, updates: Partial<Drawing>) => void;
 }
 
 /**
@@ -156,6 +161,129 @@ export function handleLineTool(params: ToolHandlerParams): void {
       console.log("COMPLETING LINE:", incompleteDrawing.id);
       completeDrawing(incompleteDrawing.id);
       // Keep the drawing selected after completion
+      setSelectedDrawingId(incompleteDrawing.id);
+    }
+  }
+}
+
+/**
+ * Handles clicks for channel tool
+ * Manages incomplete channel state and completion
+ */
+export function handleChannelTool(params: ToolHandlerParams): void {
+  const {
+    xValue,
+    yValue,
+    drawings,
+    addDrawing,
+    addPointToDrawing,
+    completeDrawing,
+    setSelectedDrawingId,
+    updateDrawing,
+  } = params;
+
+  // Find incomplete channel drawing
+  const incompleteDrawing = drawings.find(
+    (d) => d.metadata?.isIncomplete && d.type === "channel"
+  );
+
+  console.log("CHANNEL CLICK:", {
+    incompleteDrawing,
+    allDrawings: drawings,
+  });
+
+  if (!incompleteDrawing) {
+    // First click - create channel with first point
+    const drawingId = `drawing_${Date.now()}_${Math.random()}`;
+    const seriesId = `series_${Date.now()}_${Math.random()}`;
+
+    const newDrawing: Drawing = {
+      id: drawingId,
+      name: `Channel ${drawings.filter((d) => d.type === "channel").length + 1}`,
+      type: "channel" as const,
+      color: "#4caf50",
+      series: [
+        {
+          id: seriesId,
+          points: [
+            {
+              id: `point_${Date.now()}_${Math.random()}`,
+              x: xValue,
+              y: yValue,
+            },
+          ],
+        },
+      ],
+      metadata: { isIncomplete: true, maxPoints: 3 },
+    };
+
+    console.log("CREATING CHANNEL:", newDrawing);
+    addDrawing(newDrawing);
+    setSelectedDrawingId(newDrawing.id);
+  } else {
+    const baseSeries = incompleteDrawing.series[0];
+    const currentPoints = baseSeries.points.length;
+
+    if (currentPoints === 1) {
+      // Second click - add second point to base line
+      console.log("ADDING SECOND POINT TO CHANNEL:", incompleteDrawing.id);
+      addPointToDrawing(incompleteDrawing.id, baseSeries.id, {
+        x: xValue,
+        y: yValue,
+      });
+    } else if (currentPoints === 2) {
+      // Third click - calculate parallel line and complete
+      console.log("COMPLETING CHANNEL:", incompleteDrawing.id);
+      
+      const [p1, p2] = baseSeries.points;
+      const offsetPoint = { x: xValue, y: yValue };
+      
+      // Calculate perpendicular distance
+      const distance = calculatePerpendicularDistance(p1, p2, offsetPoint);
+      
+      // Calculate parallel line (ONLY for initial creation)
+      const [parallelStart, parallelEnd] = calculateParallelLine(p1, p2, distance);
+      
+      // Create the parallel series with independent points
+      const parallelSeriesId = `series_${Date.now()}_${Math.random()}`;
+      const parallelSeries = {
+        id: parallelSeriesId,
+        points: [
+          {
+            id: `point_${Date.now()}_${Math.random()}`,
+            ...parallelStart,
+          },
+          {
+            id: `point_${Date.now()}_1_${Math.random()}`,
+            ...parallelEnd,
+          },
+        ],
+      };
+      
+      // Update the drawing with parallel series
+      // Note: Points are now independent - no recalculation on edit
+      // Create a fresh copy of baseSeries to avoid reference issues
+      if (updateDrawing) {
+        const finalSeries = [
+          { ...baseSeries, points: [...baseSeries.points] },
+          parallelSeries
+        ];
+        
+        console.log('FINAL CHANNEL SERIES:', finalSeries.map((s, idx) => ({
+          seriesIndex: idx,
+          seriesId: s.id,
+          points: s.points.map(p => ({ id: p.id, x: p.x, y: p.y }))
+        })));
+        
+        updateDrawing(incompleteDrawing.id, {
+          series: finalSeries,
+          metadata: {
+            isIncomplete: false,
+          },
+        });
+      }
+      
+      completeDrawing(incompleteDrawing.id);
       setSelectedDrawingId(incompleteDrawing.id);
     }
   }

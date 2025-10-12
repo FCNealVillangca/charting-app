@@ -47,6 +47,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       addDrawing,
       clearDrawings,
       updatePoint,
+      updateDrawing,
       selectedData,
       setSelectedData,
       setSelectedDrawingId,
@@ -278,7 +279,8 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         setSelectedDrawingId,
         addDrawing,
         addPointToDrawing,
-        completeDrawing
+        completeDrawing,
+        updateDrawing
       );
       const handleKeyDown = createHandleKeyDown(chartInstance);
       const handleWheel = createHandleWheel(chartInstance);
@@ -317,6 +319,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       chartData,
       findPoints,
       updatePoint,
+      updateDrawing,
       setSelectedData,
       setSelectedDrawingId,
       addPointToDrawing,

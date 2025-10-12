@@ -65,6 +65,16 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, [activeTool]);
 
+  const toggleChannelMode = useCallback(() => {
+    if (activeTool === "channel") {
+      // When turning off channel mode, remove any incomplete channel drawings
+      setDrawings((prev) => prev.filter((d) => !(d.type === "channel" && d.metadata?.isIncomplete)));
+      setActiveTool("none");
+    } else {
+      setActiveTool("channel");
+    }
+  }, [activeTool]);
+
   const getIncompleteDrawingCallback = useCallback(() => {
     return getIncompleteDrawing(drawings, activeTool);
   }, [drawings, activeTool]);
@@ -118,6 +128,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         addPointToDrawing: addPointToDrawingCallback,
         removePoint,
         toggleLineMode,
+        toggleChannelMode,
         getIncompleteDrawing: getIncompleteDrawingCallback,
         completeDrawing
       }

@@ -73,6 +73,27 @@ export function renderDrawingSeries(
             } as Highcharts.SeriesScatterOptions;
           }
 
+        case "channel":
+          // Render channel series as lines
+          if (s.points.length >= 2) {
+            return {
+              ...baseOptions,
+              type: "line" as const,
+              color,
+              marker: createMarker(color, 4),
+              lineWidth: 2,
+            } as Highcharts.SeriesLineOptions;
+          } else {
+            // Incomplete channel - render first point as scatter
+            return {
+              ...baseOptions,
+              type: "scatter" as const,
+              color,
+              marker: createMarker(color, 4),
+              lineWidth: 0,
+            } as Highcharts.SeriesScatterOptions;
+          }
+
         case "dot":
         case "triangle":
         case "square":
