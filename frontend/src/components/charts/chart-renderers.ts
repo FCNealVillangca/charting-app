@@ -162,7 +162,7 @@ export function renderDrawingSeries(
                   ...baseOptions,
                   type: "scatter" as const,
                   color,
-                  marker: createMarker(color, 4),
+                  marker: createMarker(color, 4, "circle"),
                   lineWidth: 0,
                 } as Highcharts.SeriesScatterOptions,
               ] as any;
@@ -172,7 +172,7 @@ export function renderDrawingSeries(
                 ...baseOptions,
                 type: "line" as const,
                 color,
-                marker: createMarker(color, 4),
+                marker: createMarker(color, 4, "circle"),
                 lineWidth: 2,
               } as Highcharts.SeriesLineOptions;
             }
@@ -182,7 +182,7 @@ export function renderDrawingSeries(
               ...baseOptions,
               type: "scatter" as const,
               color,
-              marker: createMarker(color, 4),
+              marker: createMarker(color, 4, "circle"),
               lineWidth: 0,
             } as Highcharts.SeriesScatterOptions;
           }
