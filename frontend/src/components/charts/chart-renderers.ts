@@ -49,7 +49,7 @@ export function renderDrawingSeries(
   return drawings.flatMap((drawing) =>
     drawing.series.map((s, index) => {
       const baseOptions = createBaseSeriesOptions(drawing, index, s.points);
-      const color = drawing.color || (drawing.type === "line" ? "#ff6b35" : "#4caf50");
+      const color = drawing.color || (drawing.type === "line" ? "#ff6b35" : (drawing.type === "channel" ? "#000000" : "#4caf50"));
 
       switch (drawing.type) {
         case "line":

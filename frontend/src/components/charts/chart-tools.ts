@@ -196,7 +196,7 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       id: drawingId,
       name: `Channel ${drawings.filter((d) => d.type === "channel").length + 1}`,
       type: "channel" as const,
-      color: "#4caf50",
+      color: "#000000",
       series: [
         {
           id: seriesId,
