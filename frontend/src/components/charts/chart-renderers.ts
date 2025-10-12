@@ -84,8 +84,8 @@ export function renderDrawingSeries(
             return {
               ...baseOptions,
               type: "scatter" as const,
-              color: "#FF9800", // Orange for center point
-              marker: createMarker("#FF9800", 4, "circle"), // Same size as boundary dots
+              color: "#000000", // Black like boundary dots
+              marker: createMarker("#000000", 4, "circle"), // Same size as boundary dots
               lineWidth: 0,
             } as Highcharts.SeriesScatterOptions;
           }
