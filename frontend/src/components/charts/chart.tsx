@@ -92,6 +92,27 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       ]);
     }, [chartData]);
 
+    // Calculate y-axis range for line extension
+    const yAxisRange = useMemo(() => {
+      if (chartData.length === 0) return { min: 0, max: 0 };
+      
+      let min = Infinity;
+      let max = -Infinity;
+      
+      for (const d of chartData) {
+        if (d.low < min) min = d.low;
+        if (d.high > max) max = d.high;
+      }
+      
+      // Add large padding (200% on each side) for line extension without clamping
+      const range = max - min;
+      const padding = range * 2;
+      return {
+        min: min - padding,
+        max: max + padding
+      };
+    }, [chartData]);
+
     const options = useMemo(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (): any => ({
@@ -162,7 +183,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
             colorByPoint: false,
             showInLegend: false,
           } as Highcharts.SeriesCandlestickOptions,
-          ...renderDrawingSeries(drawings),
+          ...renderDrawingSeries(drawings, chartData.length, yAxisRange.min, yAxisRange.max),
         ],
         plotOptions: {
           candlestick: {
@@ -209,7 +230,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           enabled: false,
         },
       }),
-      [highchartsData, drawings, chartData, activeTool, selectedData]
+      [highchartsData, drawings, chartData, activeTool, selectedData, yAxisRange]
     );
 
     const resetZoomChart = () => {

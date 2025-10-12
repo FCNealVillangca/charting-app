@@ -226,6 +226,47 @@ export const calculateParallelLine = (
 };
 
 /**
+ * Extends a line defined by two points to the chart boundaries
+ * Clamps y-values to prevent infinity on vertical lines
+ */
+export const extendLineToRange = (
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number
+): [{ x: number; y: number }, { x: number; y: number }] => {
+  // Handle vertical lines (infinite slope)
+  if (p2.x === p1.x) {
+    // Vertical line - extend to y boundaries, keep x constant
+    const x = p1.x;
+    return [
+      { x, y: minY },
+      { x, y: maxY }
+    ];
+  }
+  
+  // Calculate slope and intercept
+  const m = (p2.y - p1.y) / (p2.x - p1.x);
+  const b = p1.y - m * p1.x;
+  
+  // Calculate y-values at the x boundaries
+  const y1 = m * minX + b;
+  const y2 = m * maxX + b;
+  
+  // Only clamp if values are extreme (beyond the extended range)
+  // This prevents angle changes during normal vertical movement
+  const clampedY1 = Math.max(minY, Math.min(maxY, y1));
+  const clampedY2 = Math.max(minY, Math.min(maxY, y2));
+  
+  return [
+    { x: minX, y: clampedY1 },
+    { x: maxX, y: clampedY2 }
+  ];
+};
+
+/**
  * Recalculates the dashed line and center point for a channel drawing based on boundary lines
  */
 export const recalculateChannelCenterLine = (

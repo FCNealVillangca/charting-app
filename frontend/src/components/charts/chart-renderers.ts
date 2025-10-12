@@ -1,5 +1,6 @@
 import Highcharts from "highcharts";
 import type { Drawing } from "./chart-types";
+import { extendLineToRange } from "./chart-utils";
 
 /**
  * Creates a marker configuration object
@@ -44,10 +45,13 @@ function createBaseSeriesOptions(
  * Handles different drawing types: lines, dots, and shapes
  */
 export function renderDrawingSeries(
-  drawings: Drawing[]
+  drawings: Drawing[],
+  chartDataLength: number = 0,
+  yMin: number = -Infinity,
+  yMax: number = Infinity
 ): Highcharts.SeriesOptionsType[] {
   return drawings.flatMap((drawing) =>
-    drawing.series.map((s, index) => {
+    drawing.series.flatMap((s, index) => {
       const baseOptions = createBaseSeriesOptions(drawing, index, s.points);
       const color = drawing.color || (drawing.type === "line" ? "#ff6b35" : (drawing.type === "channel" ? "#000000" : "#4caf50"));
 
@@ -91,9 +95,26 @@ export function renderDrawingSeries(
           }
           
           if (isDashedLine && s.points.length >= 2) {
+            // Only extend if channel is complete
+            const isComplete = !drawing.metadata?.isIncomplete;
+            let lineData = s.points.map((p) => [p.x, p.y]);
+            
+            if (isComplete && chartDataLength > 0 && s.points.length >= 2) {
+              const [p1, p2] = extendLineToRange(
+                s.points[0],
+                s.points[1],
+                0,
+                chartDataLength - 1,
+                yMin,
+                yMax
+              );
+              lineData = [[p1.x, p1.y], [p2.x, p2.y]];
+            }
+            
             // Render dashed line (no draggable markers on the line endpoints)
             return {
               ...baseOptions,
+              data: lineData,
               type: "line" as const,
               color: "#888888", // Gray for dashed line
               marker: { enabled: false }, // No markers on dashed line
@@ -103,15 +124,54 @@ export function renderDrawingSeries(
             } as Highcharts.SeriesLineOptions;
           }
           
-          // Render boundary lines
+          // Render boundary lines with extension
           if (s.points.length >= 2) {
-            return {
-              ...baseOptions,
-              type: "line" as const,
-              color,
-              marker: createMarker(color, 4),
-              lineWidth: 2,
-            } as Highcharts.SeriesLineOptions;
+            // Only extend if the channel is complete
+            const isComplete = !drawing.metadata?.isIncomplete;
+            
+            if (isComplete && chartDataLength > 0) {
+              // Extend line to chart boundaries for completed channels
+              const [p1, p2] = extendLineToRange(
+                s.points[0],
+                s.points[1],
+                0,
+                chartDataLength - 1,
+                yMin,
+                yMax
+              );
+              
+              // Return both the extended line (non-interactive) and control points (interactive)
+              return [
+                // Extended line without markers
+                {
+                  name: `${drawing.name} - ${index + 1} (line)`,
+                  data: [[p1.x, p1.y], [p2.x, p2.y]],
+                  type: "line" as const,
+                  color,
+                  marker: { enabled: false },
+                  lineWidth: 2,
+                  showInLegend: false,
+                  enableMouseTracking: false,
+                } as Highcharts.SeriesLineOptions,
+                // Control points with markers (interactive)
+                {
+                  ...baseOptions,
+                  type: "scatter" as const,
+                  color,
+                  marker: createMarker(color, 4),
+                  lineWidth: 0,
+                } as Highcharts.SeriesScatterOptions,
+              ] as any;
+            } else {
+              // Incomplete or no extension - render normal line
+              return {
+                ...baseOptions,
+                type: "line" as const,
+                color,
+                marker: createMarker(color, 4),
+                lineWidth: 2,
+              } as Highcharts.SeriesLineOptions;
+            }
           } else {
             // Incomplete channel - render first point as scatter
             return {
