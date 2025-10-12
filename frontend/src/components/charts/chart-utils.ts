@@ -33,40 +33,23 @@ export const updatePointInDrawings = (
   x: number,
   y: number
 ): Drawing[] => {
-  console.log('UPDATE POINT:', { drawingId, seriesId, pointId, x, y });
-  
-  const result = drawings.map((d) => {
-    if (d.id === drawingId) {
-      console.log('Found drawing:', d.name, 'Series count:', d.series.length);
-      return {
-        ...d,
-        series: d.series.map((s, idx) => {
-          console.log(`  Series ${idx} (${s.id}):`, s.points.map(p => ({ id: p.id, x: p.x.toFixed(2), y: p.y.toFixed(5) })));
-          if (s.id === seriesId) {
-            return {
-              ...s,
-              points: s.points.map((p) => {
-                if (p.id === pointId) {
-                  console.log('    UPDATING POINT:', p.id, 'from', { x: p.x, y: p.y }, 'to', { x, y });
-                  return { ...p, x, y };
+  return drawings.map((d) =>
+    d.id === drawingId
+      ? {
+          ...d,
+          series: d.series.map((s) =>
+            s.id === seriesId
+              ? {
+                  ...s,
+                  points: s.points.map((p) =>
+                    p.id === pointId ? { ...p, x, y } : p
+                  ),
                 }
-                return p;
-              }),
-            };
-          }
-          return s;
-        }),
-      };
-    }
-    return d;
-  });
-  
-  console.log('After update, all drawings:', result.map(d => ({
-    name: d.name,
-    series: d.series.map(s => ({ id: s.id, points: s.points.map(p => p.id) }))
-  })));
-  
-  return result;
+              : s
+          ),
+        }
+      : d
+  );
 };
 
 /**
@@ -102,7 +85,6 @@ export const findPointInDrawings = (
   }
   
   if (closestPoint) {
-    console.log('Found closest point:', closestPoint);
     return { drawingId: closestPoint.drawingId, seriesId: closestPoint.seriesId, pointId: closestPoint.pointId };
   }
   
@@ -244,45 +226,70 @@ export const calculateParallelLine = (
 };
 
 /**
- * Recalculates the parallel line for a channel drawing
+ * Recalculates the dashed line and center point for a channel drawing based on boundary lines
  */
-export const recalculateChannelParallelLine = (
+export const recalculateChannelCenterLine = (
   drawing: Drawing
 ): Drawing => {
   if (drawing.type !== 'channel') return drawing;
   
   const baseSeries = drawing.series[0];
-  const metadata = drawing.metadata;
+  const parallelSeries = drawing.series[1];
+  const dashedSeries = drawing.series[2];
+  const centerSeries = drawing.series[3];
   
-  // Need at least 2 points in base line and offset point
-  if (!baseSeries || baseSeries.points.length < 2 || !metadata?.offsetPoint) {
+  // Need both boundary lines, dashed line, and center point to exist
+  if (!baseSeries || !parallelSeries || !dashedSeries || !centerSeries) {
     return drawing;
   }
   
-  const [p1, p2] = baseSeries.points;
-  const distance = calculatePerpendicularDistance(p1, p2, metadata.offsetPoint);
-  const [parallelStart, parallelEnd] = calculateParallelLine(p1, p2, distance);
+  if (baseSeries.points.length < 2 || parallelSeries.points.length < 2) {
+    return drawing;
+  }
   
-  // Update or create the parallel series
-  const parallelSeries = drawing.series[1] || { id: `series_${Date.now()}_${Math.random()}`, points: [] };
+  // Calculate new dashed line (midpoints between boundary lines)
+  const dashedStart = {
+    x: (baseSeries.points[0].x + parallelSeries.points[0].x) / 2,
+    y: (baseSeries.points[0].y + parallelSeries.points[0].y) / 2,
+  };
+  const dashedEnd = {
+    x: (baseSeries.points[1].x + parallelSeries.points[1].x) / 2,
+    y: (baseSeries.points[1].y + parallelSeries.points[1].y) / 2,
+  };
   
-  const updatedParallelSeries = {
-    ...parallelSeries,
+  const updatedDashedSeries = {
+    ...dashedSeries,
     points: [
       {
-        id: parallelSeries.points[0]?.id || `point_${Date.now()}_${Math.random()}`,
-        ...parallelStart,
+        ...dashedSeries.points[0],
+        ...dashedStart,
       },
       {
-        id: parallelSeries.points[1]?.id || `point_${Date.now()}_1_${Math.random()}`,
-        ...parallelEnd,
+        ...dashedSeries.points[1],
+        ...dashedEnd,
+      },
+    ],
+  };
+  
+  // Calculate new center point (center of all 4 boundary points)
+  const centerX = (baseSeries.points[0].x + baseSeries.points[1].x + parallelSeries.points[0].x + parallelSeries.points[1].x) / 4;
+  const centerY = (baseSeries.points[0].y + baseSeries.points[1].y + parallelSeries.points[0].y + parallelSeries.points[1].y) / 4;
+  
+  const updatedCenterSeries = {
+    ...centerSeries,
+    points: [
+      {
+        ...centerSeries.points[0],
+        x: centerX,
+        y: centerY,
       },
     ],
   };
   
   return {
     ...drawing,
-    series: [baseSeries, updatedParallelSeries],
+    series: [baseSeries, parallelSeries, updatedDashedSeries, updatedCenterSeries],
   };
 };
+
 

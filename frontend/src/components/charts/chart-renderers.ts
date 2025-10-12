@@ -74,7 +74,36 @@ export function renderDrawingSeries(
           }
 
         case "channel":
-          // Render channel series as lines
+          // Check if this is the center point (4th series with 1 point)
+          const isCenterPoint = drawing.metadata?.centerSeriesId === s.id;
+          // Check if this is the dashed line (3rd series)
+          const isDashedLine = drawing.metadata?.dashedSeriesId === s.id;
+          
+          if (isCenterPoint) {
+            // Render center point as a single draggable dot
+            return {
+              ...baseOptions,
+              type: "scatter" as const,
+              color: "#FF9800", // Orange for center point
+              marker: createMarker("#FF9800", 4, "circle"), // Same size as boundary dots
+              lineWidth: 0,
+            } as Highcharts.SeriesScatterOptions;
+          }
+          
+          if (isDashedLine && s.points.length >= 2) {
+            // Render dashed line (no draggable markers on the line endpoints)
+            return {
+              ...baseOptions,
+              type: "line" as const,
+              color: "#888888", // Gray for dashed line
+              marker: { enabled: false }, // No markers on dashed line
+              lineWidth: 1,
+              dashStyle: "Dash",
+              enableMouseTracking: false, // Can't interact with dashed line
+            } as Highcharts.SeriesLineOptions;
+          }
+          
+          // Render boundary lines
           if (s.points.length >= 2) {
             return {
               ...baseOptions,

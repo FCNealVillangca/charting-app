@@ -187,11 +187,6 @@ export function handleChannelTool(params: ToolHandlerParams): void {
     (d) => d.metadata?.isIncomplete && d.type === "channel"
   );
 
-  console.log("CHANNEL CLICK:", {
-    incompleteDrawing,
-    allDrawings: drawings,
-  });
-
   if (!incompleteDrawing) {
     // First click - create channel with first point
     const drawingId = `drawing_${Date.now()}_${Math.random()}`;
@@ -217,7 +212,6 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       metadata: { isIncomplete: true, maxPoints: 3 },
     };
 
-    console.log("CREATING CHANNEL:", newDrawing);
     addDrawing(newDrawing);
     setSelectedDrawingId(newDrawing.id);
   } else {
@@ -226,15 +220,12 @@ export function handleChannelTool(params: ToolHandlerParams): void {
 
     if (currentPoints === 1) {
       // Second click - add second point to base line
-      console.log("ADDING SECOND POINT TO CHANNEL:", incompleteDrawing.id);
       addPointToDrawing(incompleteDrawing.id, baseSeries.id, {
         x: xValue,
         y: yValue,
       });
     } else if (currentPoints === 2) {
       // Third click - calculate parallel line and complete
-      console.log("COMPLETING CHANNEL:", incompleteDrawing.id);
-      
       const [p1, p2] = baseSeries.points;
       const offsetPoint = { x: xValue, y: yValue };
       
@@ -264,21 +255,62 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       // Note: Points are now independent - no recalculation on edit
       // Create a fresh copy of baseSeries to avoid reference issues
       if (updateDrawing) {
+        // Calculate dashed line (midpoints between the two boundary lines)
+        const dashedStart = {
+          x: (baseSeries.points[0].x + parallelStart.x) / 2,
+          y: (baseSeries.points[0].y + parallelStart.y) / 2,
+        };
+        const dashedEnd = {
+          x: (baseSeries.points[1].x + parallelEnd.x) / 2,
+          y: (baseSeries.points[1].y + parallelEnd.y) / 2,
+        };
+        
+        // Create dashed line series
+        const dashedSeriesId = `series_${Date.now()}_2_${Math.random()}`;
+        const dashedSeries = {
+          id: dashedSeriesId,
+          points: [
+            {
+              id: `point_${Date.now()}_dashed_${Math.random()}`,
+              ...dashedStart,
+            },
+            {
+              id: `point_${Date.now()}_dashed_1_${Math.random()}`,
+              ...dashedEnd,
+            },
+          ],
+        };
+        
+        // Calculate center point (center of all 4 boundary points)
+        const centerX = (baseSeries.points[0].x + baseSeries.points[1].x + parallelStart.x + parallelEnd.x) / 4;
+        const centerY = (baseSeries.points[0].y + baseSeries.points[1].y + parallelStart.y + parallelEnd.y) / 4;
+        
+        // Create center point series (just ONE point in the middle)
+        const centerSeriesId = `series_${Date.now()}_3_${Math.random()}`;
+        const centerSeries = {
+          id: centerSeriesId,
+          points: [
+            {
+              id: `point_${Date.now()}_center_${Math.random()}`,
+              x: centerX,
+              y: centerY,
+            },
+          ],
+        };
+        
         const finalSeries = [
           { ...baseSeries, points: [...baseSeries.points] },
-          parallelSeries
+          parallelSeries,
+          dashedSeries,
+          centerSeries
         ];
-        
-        console.log('FINAL CHANNEL SERIES:', finalSeries.map((s, idx) => ({
-          seriesIndex: idx,
-          seriesId: s.id,
-          points: s.points.map(p => ({ id: p.id, x: p.x, y: p.y }))
-        })));
         
         updateDrawing(incompleteDrawing.id, {
           series: finalSeries,
           metadata: {
             isIncomplete: false,
+            dashedSeriesId, // Store the dashed line series ID
+            centerSeriesId, // Store this so we know which series is the center point
           },
         });
       }
