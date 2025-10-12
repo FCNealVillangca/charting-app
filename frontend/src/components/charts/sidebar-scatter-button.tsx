@@ -1,5 +1,5 @@
 import React, { useContext, useState } from "react";
-import { ChartContext } from "./context";
+import { ChartContext } from "./chart-context";
 import {
   DropdownMenu,
   DropdownMenuContent,

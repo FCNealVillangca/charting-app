@@ -1,4 +1,4 @@
-import type { Drawing } from "./types";
+import type { Drawing } from "./chart-types";
 
 export interface ToolHandlerParams {
   xValue: number;

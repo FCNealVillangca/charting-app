@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import type { Drawing } from "./types";
+import type { Drawing } from "./chart-types";
 
 interface DrawingEditorDialogProps {
   isOpen: boolean;

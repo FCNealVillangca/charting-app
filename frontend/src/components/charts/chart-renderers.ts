@@ -1,22 +1,42 @@
 import Highcharts from "highcharts";
-import type { Drawing } from "./types";
+import type { Drawing } from "./chart-types";
 
 /**
- * Gets the marker symbol for a given drawing type
+ * Creates a marker configuration object
  */
-function getMarkerSymbol(drawingType: string): string {
-  switch (drawingType) {
-    case "triangle":
-      return "triangle";
-    case "square":
-      return "square";
-    case "circle":
-      return "circle";
-    case "diamond":
-      return "diamond";
-    default:
-      return "circle"; // Default to circle for dot
-  }
+function createMarker(
+  color: string,
+  radius: number,
+  symbol?: string
+): Highcharts.PointMarkerOptionsObject {
+  return {
+    radius,
+    ...(symbol && { symbol }),
+    fillColor: color,
+    lineColor: "#fff",
+    lineWidth: 2,
+    states: {
+      hover: {
+        enabled: false,
+      },
+    },
+  };
+}
+
+/**
+ * Creates base series options common to all drawing types
+ */
+function createBaseSeriesOptions(
+  drawing: Drawing,
+  seriesIndex: number,
+  points: { x: number; y: number }[]
+) {
+  return {
+    name: `${drawing.name} - ${seriesIndex + 1}`,
+    data: points.map((p) => [p.x, p.y]),
+    showInLegend: false,
+    enableMouseTracking: true,
+  };
 }
 
 /**
@@ -28,52 +48,28 @@ export function renderDrawingSeries(
 ): Highcharts.SeriesOptionsType[] {
   return drawings.flatMap((drawing) =>
     drawing.series.map((s, index) => {
+      const baseOptions = createBaseSeriesOptions(drawing, index, s.points);
+      const color = drawing.color || (drawing.type === "line" ? "#ff6b35" : "#4caf50");
+
       switch (drawing.type) {
         case "line":
-          // For lines, only render if we have at least 2 points OR if it's incomplete with 1 point (show as scatter)
+          // Complete line with 2+ points - render as line
           if (s.points.length >= 2) {
-            // Complete line - render as line
             return {
+              ...baseOptions,
               type: "line" as const,
-              name: `${drawing.name} - ${index + 1}`,
-              data: s.points.map((p) => [p.x, p.y]),
-              color: drawing.color || "#ff6b35",
-              marker: {
-                radius: 4,
-                fillColor: drawing.color || "#ff6b35",
-                lineColor: "#fff",
-                lineWidth: 2,
-                states: {
-                  hover: {
-                    enabled: false,
-                  },
-                },
-              },
+              color,
+              marker: createMarker(color, 4),
               lineWidth: 2,
-              showInLegend: false,
-              enableMouseTracking: true,
             } as Highcharts.SeriesLineOptions;
           } else {
             // Incomplete line - render first point as scatter
             return {
+              ...baseOptions,
               type: "scatter" as const,
-              name: `${drawing.name} - ${index + 1}`,
-              data: s.points.map((p) => [p.x, p.y]),
-              color: drawing.color || "#ff6b35",
-              marker: {
-                radius: 4,
-                fillColor: drawing.color || "#ff6b35",
-                lineColor: "#fff",
-                lineWidth: 2,
-                states: {
-                  hover: {
-                    enabled: false,
-                  },
-                },
-              },
+              color,
+              marker: createMarker(color, 4),
               lineWidth: 0,
-              showInLegend: false,
-              enableMouseTracking: true,
             } as Highcharts.SeriesScatterOptions;
           }
 
@@ -83,27 +79,14 @@ export function renderDrawingSeries(
         case "circle":
         case "diamond":
         default:
-          // Shape drawing types
+          // Shape drawing types - use drawing type as symbol, or "circle" for dot
+          const symbol = drawing.type === "dot" ? "circle" : drawing.type;
           return {
+            ...baseOptions,
             type: "scatter" as const,
-            name: `${drawing.name} - ${index + 1}`,
-            data: s.points.map((p) => [p.x, p.y]),
-            color: drawing.color || "#4caf50",
-            marker: {
-              radius: 6,
-              symbol: getMarkerSymbol(drawing.type),
-              fillColor: drawing.color || "#4caf50",
-              lineColor: "#fff",
-              lineWidth: 2,
-              states: {
-                hover: {
-                  enabled: false,
-                },
-              },
-            },
+            color,
+            marker: createMarker(color, 6, symbol),
             lineWidth: 0,
-            showInLegend: false,
-            enableMouseTracking: true,
           } as Highcharts.SeriesScatterOptions;
       }
     })

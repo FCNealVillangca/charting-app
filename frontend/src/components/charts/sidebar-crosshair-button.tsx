@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import { ChartContext } from "./context";
+import { ChartContext } from "./chart-context";
 
 const SidebarCrosshairButton: React.FC = () => {
   const chartContext = useContext(ChartContext);

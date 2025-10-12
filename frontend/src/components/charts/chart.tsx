@@ -10,8 +10,8 @@ import {
 import Highcharts from "highcharts";
 import "highcharts/highcharts-more";
 import "highcharts/modules/stock";
-import type { DataPoint } from "./types";
-import { ChartContext } from "./context";
+import type { DataPoint } from "./chart-types";
+import { ChartContext } from "./chart-context";
 import SeriesSidebar from "./series-sidebar";
 import Sidebar from "./sidebar";
 import { renderDrawingSeries } from "./chart-renderers";

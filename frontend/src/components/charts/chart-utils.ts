@@ -1,4 +1,4 @@
-import type { Drawing } from "./types";
+import type { Drawing } from "./chart-types";
 
 /**
  * Generate a random hex color
@@ -155,3 +155,4 @@ export const getIncompleteDrawing = (
 ): Drawing | undefined => {
   return drawings.find((d) => d.metadata?.isIncomplete && d.type === activeTool);
 };
+

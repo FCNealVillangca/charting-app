@@ -11,7 +11,7 @@ interface CSVDataPoint {
   close: number;
 }
 
-import type { DataPoint } from "../../components/charts/types";
+import type { DataPoint } from "../../components/charts/chart-types";
 
 function Pairs() {
   const { pair } = useParams<{ pair: string }>();

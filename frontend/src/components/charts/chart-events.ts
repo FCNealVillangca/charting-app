@@ -1,6 +1,6 @@
 import Highcharts from "highcharts";
-import type { DataPoint, Drawing } from "./types";
-import { handleNoneTool, handleShapeTool, handleLineTool } from "./tool-handlers";
+import type { DataPoint, Drawing } from "./chart-types";
+import { handleNoneTool, handleShapeTool, handleLineTool } from "./chart-tools";
 
 /**
  * Handles mouse movement for tooltip display and cursor management

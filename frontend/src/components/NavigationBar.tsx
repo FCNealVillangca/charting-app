@@ -1,6 +1,6 @@
 import React, { useState, useContext, useMemo } from "react";
 import PairSelectorDialog from "./PairSelectorDialog";
-import { ChartContext } from "./charts/context";
+import { ChartContext } from "./charts/chart-context";
 import DrawingEditorDialog from "./charts/DrawingEditorDialog";
 
 interface NavigationBarProps {

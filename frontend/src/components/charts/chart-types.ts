@@ -51,3 +51,4 @@ export interface ChartContextType {
   getIncompleteDrawing: () => Drawing | undefined;
   completeDrawing: (drawingId: string) => void;
 }
+

@@ -1,7 +1,7 @@
 import { createContext, useRef, useCallback } from "react";
 import React, { useState } from "react";
 import type { ReactNode } from "react";
-import type { ChartContextType, Drawing, BaseChartRef } from "./types";
+import type { ChartContextType, Drawing, BaseChartRef } from "./chart-types";
 import {
   updatePointInDrawings,
   findPointInDrawings,
@@ -10,7 +10,7 @@ import {
   deleteDrawingById,
   completeDrawingById,
   getIncompleteDrawing,
-} from "./utils";
+} from "./chart-utils";
 
 export const ChartContext = createContext<ChartContextType | undefined>(undefined);
 
@@ -125,3 +125,4 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     children
   );
 };
+
