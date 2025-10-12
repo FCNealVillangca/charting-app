@@ -126,11 +126,15 @@ export function renderDrawingSeries(
           
           // Render boundary lines with extension
           if (s.points.length >= 2) {
-            // Only extend if the channel is complete
+            // Extend the line if it has 2 points, regardless of completion status
+            // For incomplete channels, only extend the first series (base line)
             const isComplete = !drawing.metadata?.isIncomplete;
+            const isBaseLine = index === 0; // First series is the base line
             
-            if (isComplete && chartDataLength > 0) {
-              // Extend line to chart boundaries for completed channels
+            const shouldExtend = chartDataLength > 0 && (isComplete || isBaseLine);
+            
+            if (shouldExtend) {
+              // Extend line to chart boundaries
               const [p1, p2] = extendLineToRange(
                 s.points[0],
                 s.points[1],
@@ -163,7 +167,7 @@ export function renderDrawingSeries(
                 } as Highcharts.SeriesScatterOptions,
               ] as any;
             } else {
-              // Incomplete or no extension - render normal line
+              // Incomplete parallel line (not base line) - render normal line
               return {
                 ...baseOptions,
                 type: "line" as const,
