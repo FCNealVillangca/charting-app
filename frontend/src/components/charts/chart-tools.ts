@@ -58,7 +58,7 @@ export function handleNoneTool(params: ToolHandlerParams): void {
 export function handleShapeTool(
   params: ToolHandlerParams & { toolType: string }
 ): void {
-  const { xValue, yValue, drawings, addDrawing, toolType } = params;
+  const { xValue, yValue, drawings, addDrawing, setSelectedDrawingId, toolType } = params;
 
   const drawingNumber = drawings.length + 1;
   const newDrawing: Drawing = {
@@ -81,6 +81,8 @@ export function handleShapeTool(
   };
 
   addDrawing(newDrawing);
+  // Auto-select the newly created drawing
+  setSelectedDrawingId(newDrawing.id);
 }
 
 /**
@@ -95,6 +97,7 @@ export function handleLineTool(params: ToolHandlerParams): void {
     addDrawing,
     addPointToDrawing,
     completeDrawing,
+    setSelectedDrawingId,
   } = params;
 
   // Find incomplete line drawing directly from current drawings state
@@ -134,6 +137,8 @@ export function handleLineTool(params: ToolHandlerParams): void {
 
     console.log("CREATING LINE:", newDrawing);
     addDrawing(newDrawing);
+    // Auto-select the newly created drawing
+    setSelectedDrawingId(newDrawing.id);
   } else {
     // Add point to incomplete drawing
     console.log("ADDING POINT TO LINE:", incompleteDrawing.id);
@@ -150,6 +155,8 @@ export function handleLineTool(params: ToolHandlerParams): void {
     if (currentPoints >= maxPoints) {
       console.log("COMPLETING LINE:", incompleteDrawing.id);
       completeDrawing(incompleteDrawing.id);
+      // Keep the drawing selected after completion
+      setSelectedDrawingId(incompleteDrawing.id);
     }
   }
 }
