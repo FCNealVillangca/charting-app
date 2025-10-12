@@ -73,7 +73,7 @@ export function renderDrawingSeries(
               ...baseOptions,
               type: "scatter" as const,
               color,
-              marker: createMarker(color, 4),
+              marker: createMarker(color, 4, "circle"),
               lineWidth: 0,
             } as Highcharts.SeriesScatterOptions;
           }
