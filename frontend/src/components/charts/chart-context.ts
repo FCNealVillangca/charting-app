@@ -127,6 +127,10 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, [activeTool]);
 
+  const toggleHLineMode = useCallback(() => {
+    setActiveTool(activeTool === "hline" ? "none" : "hline");
+  }, [activeTool]);
+
   const getIncompleteDrawingCallback = useCallback(() => {
     return getIncompleteDrawing(drawings, activeTool);
   }, [drawings, activeTool]);
@@ -181,6 +185,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         removePoint,
         toggleLineMode,
         toggleChannelMode,
+        toggleHLineMode,
         getIncompleteDrawing: getIncompleteDrawingCallback,
         completeDrawing
       }

@@ -3,6 +3,7 @@ import SidebarCrosshairButton from "./sidebar-crosshair-button";
 import SidebarScatterButton from "./sidebar-scatter-button";
 import SidebarLineButton from "./sidebar-line-button";
 import SidebarChannelButton from "./sidebar-channel-button";
+import SidebarHLineButton from "./sidebar-hline-button";
 import SidebarResetButton from "./sidebar-reset-button";
 import SidebarClearButton from "./sidebar-clear-button";
 import SidebarShortcutsButton from "./sidebar-shortcuts-button";
@@ -14,6 +15,7 @@ const Sidebar: React.FC = () => {
       <SidebarScatterButton />
       <SidebarLineButton />
       <SidebarChannelButton />
+      <SidebarHLineButton />
       <SidebarResetButton />
       <SidebarClearButton />
       <SidebarShortcutsButton />

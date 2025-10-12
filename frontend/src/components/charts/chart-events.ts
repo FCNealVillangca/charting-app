@@ -1,6 +1,6 @@
 import Highcharts from "highcharts";
 import type { DataPoint, Drawing } from "./chart-types";
-import { handleNoneTool, handleShapeTool, handleLineTool, handleChannelTool } from "./chart-tools";
+import { handleNoneTool, handleShapeTool, handleLineTool, handleChannelTool, handleHLineTool } from "./chart-tools";
 
 /**
  * Handles mouse movement for tooltip display and cursor management
@@ -187,6 +187,9 @@ export function createHandleMouseDown(
     } else if (activeTool === "channel") {
       e.preventDefault(); // Prevent zoom
       handleChannelTool(toolHandlerParams);
+    } else if (activeTool === "hline") {
+      e.preventDefault(); // Prevent zoom
+      handleHLineTool(toolHandlerParams);
     }
   };
 }

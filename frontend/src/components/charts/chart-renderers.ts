@@ -53,7 +53,7 @@ export function renderDrawingSeries(
   return drawings.flatMap((drawing) =>
     drawing.series.flatMap((s, index) => {
       const baseOptions = createBaseSeriesOptions(drawing, index, s.points);
-      const color = drawing.color || (drawing.type === "line" ? "#ff6b35" : (drawing.type === "channel" ? "#000000" : "#4caf50"));
+      const color = drawing.color || "#000000"; // Default to black for all drawings
 
       switch (drawing.type) {
         case "line":
@@ -63,7 +63,8 @@ export function renderDrawingSeries(
               ...baseOptions,
               type: "line" as const,
               color,
-              marker: createMarker(color, 4),
+              lineColor: color,
+              marker: createMarker(color, 4, "circle"),
               lineWidth: 2,
             } as Highcharts.SeriesLineOptions;
           } else {
@@ -152,6 +153,7 @@ export function renderDrawingSeries(
                   data: [[p1.x, p1.y], [p2.x, p2.y]],
                   type: "line" as const,
                   color,
+                  lineColor: color,
                   marker: { enabled: false },
                   lineWidth: 2,
                   showInLegend: false,
@@ -172,6 +174,7 @@ export function renderDrawingSeries(
                 ...baseOptions,
                 type: "line" as const,
                 color,
+                lineColor: color,
                 marker: createMarker(color, 4, "circle"),
                 lineWidth: 2,
               } as Highcharts.SeriesLineOptions;
@@ -185,6 +188,40 @@ export function renderDrawingSeries(
               marker: createMarker(color, 4, "circle"),
               lineWidth: 0,
             } as Highcharts.SeriesScatterOptions;
+          }
+
+        case "hline":
+          // Horizontal line - extends across entire chart at a fixed y-value
+          if (s.points.length >= 1) {
+            const yValue = s.points[0].y;
+            
+            return [
+              // Extended horizontal line
+              {
+                name: drawing.name,
+                data: [[0, yValue], [chartDataLength - 1, yValue]],
+                type: "line" as const,
+                color,
+                lineColor: color,
+                marker: { enabled: false },
+                lineWidth: 2,
+                showInLegend: false,
+                enableMouseTracking: false,
+              } as Highcharts.SeriesLineOptions,
+              // Single control point in the middle for dragging
+              {
+                name: `${drawing.name} - control`,
+                data: [[(chartDataLength - 1) / 2, yValue]],
+                type: "scatter" as const,
+                color,
+                marker: createMarker(color, 4, "circle"),
+                lineWidth: 0,
+                showInLegend: false,
+                enableMouseTracking: true,
+              } as Highcharts.SeriesScatterOptions,
+            ] as any;
+          } else {
+            return [];
           }
 
         case "dot":

@@ -70,7 +70,7 @@ export function handleShapeTool(
     id: `drawing_${Date.now()}_${Math.random()}`,
     name: `Point ${drawingNumber}`,
     type: toolType as any,
-    color: "#4caf50", // Fixed green color
+    color: "#000000", // Black
     series: [
       {
         id: `series_${Date.now()}_${Math.random()}`,
@@ -124,7 +124,7 @@ export function handleLineTool(params: ToolHandlerParams): void {
       id: drawingId,
       name: `Line ${drawings.filter((d) => d.type === "line").length + 1}`,
       type: "line" as const,
-      color: "#4caf50", // Fixed green color
+      color: "#000000", // Black
       series: [
         {
           id: seriesId,
@@ -196,7 +196,7 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       id: drawingId,
       name: `Channel ${drawings.filter((d) => d.type === "channel").length + 1}`,
       type: "channel" as const,
-      color: "#000000",
+      color: "#000000", // Black
       series: [
         {
           id: seriesId,
@@ -319,5 +319,45 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       setSelectedDrawingId(incompleteDrawing.id);
     }
   }
+}
+
+/**
+ * Handles clicks for horizontal line tool
+ * Creates a horizontal line at the clicked y-value
+ */
+export function handleHLineTool(params: ToolHandlerParams): void {
+  const {
+    yValue,
+    drawings,
+    addDrawing,
+    setSelectedDrawingId,
+  } = params;
+
+  const drawingNumber = drawings.filter((d) => d.type === "hline").length + 1;
+  const drawingId = `drawing_${Date.now()}_${Math.random()}`;
+  const seriesId = `series_${Date.now()}_${Math.random()}`;
+
+  const newDrawing: Drawing = {
+    id: drawingId,
+    name: `H-Line ${drawingNumber}`,
+    type: "hline" as const,
+    color: "#000000", // Black
+    series: [
+      {
+        id: seriesId,
+        points: [
+          {
+            id: `point_${Date.now()}_${Math.random()}`,
+            x: 0, // Will be extended across chart
+            y: yValue,
+          },
+        ],
+      },
+    ],
+    metadata: { yValue }, // Store the y-value for easy reference
+  };
+
+  addDrawing(newDrawing);
+  setSelectedDrawingId(newDrawing.id);
 }
 

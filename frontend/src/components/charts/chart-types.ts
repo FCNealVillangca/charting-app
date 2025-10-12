@@ -21,7 +21,7 @@ export interface Series {
 export interface Drawing {
   id: string;
   name: string;
-  type: 'dot' | 'triangle' | 'square' | 'circle' | 'diamond' | 'line' | 'trendline' | 'fibonacci' | 'channel' | 'rectangle';
+  type: 'dot' | 'triangle' | 'square' | 'circle' | 'diamond' | 'line' | 'trendline' | 'fibonacci' | 'channel' | 'rectangle' | 'hline';
   color: string;
   series: Series[];
   metadata?: Record<string, any>;
@@ -49,6 +49,7 @@ export interface ChartContextType {
   removePoint: (drawingId: string, seriesId: string, pointId: string) => void;
   toggleLineMode: () => void;
   toggleChannelMode: () => void;
+  toggleHLineMode: () => void;
   getIncompleteDrawing: () => Drawing | undefined;
   completeDrawing: (drawingId: string) => void;
 }
