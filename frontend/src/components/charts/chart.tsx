@@ -281,6 +281,8 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         chartInstance,
         chartData,
         selectedData,
+        activeTool,
+        findPoints,
         setTooltipData
       );
       const handleMouseLeave = createHandleMouseLeave(setTooltipData);

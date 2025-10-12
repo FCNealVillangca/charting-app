@@ -9,6 +9,13 @@ export function createHandleMouseMove(
   chartInstance: { current: Highcharts.Chart | null },
   chartData: DataPoint[],
   selectedData: { drawingId: string; seriesId: string; pointId: string } | null,
+  activeTool: string,
+  findPoints: (
+    x: number,
+    y: number,
+    xTolerance?: number,
+    yTolerance?: number
+  ) => { drawingId: string; seriesId: string; pointId: string } | null,
   setTooltipData: (data: {
     visible: boolean;
     x: number;
@@ -21,10 +28,12 @@ export function createHandleMouseMove(
 
     const chart = chartInstance.current;
     const xAxis = chart.xAxis[0];
+    const yAxis = chart.yAxis[0];
 
     // Get mouse position relative to chart
     const rect = chart.container.getBoundingClientRect();
     const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
     // Show tooltip
     const xValue = xAxis.toValue(x);
@@ -39,11 +48,25 @@ export function createHandleMouseMove(
       });
     }
 
-    // Set cursor
+    // Set cursor based on context
     if (selectedData) {
-      document.body.style.cursor = "grab";
+      // Currently dragging a point
+      document.body.style.cursor = "grabbing";
     } else {
-      document.body.style.cursor = "";
+      // Check if hovering over a point
+      const yValue = yAxis.toValue(y);
+      const hoveringPoint = findPoints(xValue, yValue);
+      
+      if (hoveringPoint) {
+        // Hovering over a draggable point
+        document.body.style.cursor = "pointer";
+      } else if (activeTool !== "none" && activeTool !== null) {
+        // Drawing tool is active
+        document.body.style.cursor = "crosshair";
+      } else {
+        // Default cursor
+        document.body.style.cursor = "";
+      }
     }
   };
 }
