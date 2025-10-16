@@ -1,78 +1,107 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams } from "react-router";
 import NavigationBar from "../../components/NavigationBar";
 import Chart from "../../components/charts/chart";
-
-interface CSVDataPoint {
-  date: Date;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-}
-
+import { apiClient, type CandleData } from "../../lib/api-client";
 import type { DataPoint } from "../../components/charts/chart-types";
+import { useChart } from "../../components/charts/chart-hook";
+import { useDrawingsPersistence } from "../../hooks/useDrawingsPersistence";
 
 function Pairs() {
   const { pair } = useParams<{ pair: string }>();
-  const [data, setData] = useState<CSVDataPoint[]>([]);
+  const [data, setData] = useState<CandleData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPair, setCurrentPair] = useState(pair || "EURUSD");
+  const [nextUrl, setNextUrl] = useState<string | null>(null);
+  const [prevUrl, setPrevUrl] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  
+  // Get chart context for drawings
+  const { drawings, addDrawing } = useChart();
+  
+  // Auto-save drawings to backend
+  const { savedCount } = useDrawingsPersistence({
+    pair: currentPair,
+    drawings,
+    enabled: true,
+  });
 
+  // Load saved drawings on mount
   useEffect(() => {
-    const fetchCSVData = async () => {
+    const loadDrawings = async () => {
       try {
-        const response = await fetch("/src/data/EURUSD.csv");
-        const csvText = await response.text();
+        const response = await apiClient.getDrawings(currentPair);
+        console.log(`Loaded ${response.count} saved drawings for ${currentPair}`);
+        
+        // Add each drawing to the chart
+        response.drawings.forEach((drawing) => {
+          addDrawing(drawing as any); // Cast needed due to slight type differences
+        });
+      } catch (err) {
+        console.error("Error loading drawings:", err);
+      }
+    };
 
-        if (!csvText.trim()) {
-          console.warn("CSV file is empty, using mock data");
-          setData([]);
-          setLoading(false);
-          return;
-        }
+    loadDrawings();
+  }, [currentPair, addDrawing]);
 
-        // Parse CSV data
-        const lines = csvText.trim().split("\n");
-        // Skip header line and parse data
-
-        const parsedData: CSVDataPoint[] = lines.slice(1).map((line) => {
-          const values = line.split(",");
-
-          // CSV format: time,open,high,low,close,tick_volume,spread,real_volume
-          // time is Unix timestamp in seconds
-          const timestamp = parseInt(values[0]);
-          const date = new Date(timestamp * 1000);
-
-          return {
-            date: date, // Convert Unix seconds to milliseconds
-            open: parseFloat(values[1]),
-            high: parseFloat(values[2]),
-            low: parseFloat(values[3]),
-            close: parseFloat(values[4]),
-          };
+  // Initial data fetch
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        setLoading(true);
+        const response = await apiClient.getCandles(currentPair, {
+          limit: 2000, // Load last 2000 candles initially
         });
 
-        // Limit to 2k candlesticks for better performance
-        const limitedData = parsedData.slice(-2000);
-
-        setData(limitedData);
+        setData(response.results);
+        setNextUrl(response.next);
+        setPrevUrl(response.previous);
+        setTotalCount(response.count);
+        setError(null);
       } catch (err) {
-        console.error("Error fetching CSV data:", err);
-        setError("Failed to load data");
+        console.error("Error fetching candle data:", err);
+        setError(err instanceof Error ? err.message : "Failed to load data");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCSVData();
-  }, []);
+    fetchInitialData();
+  }, [currentPair]);
+
+  // Load more data (for pagination)
+  const loadMoreData = useCallback(async (direction: 'next' | 'prev') => {
+    const url = direction === 'next' ? nextUrl : prevUrl;
+    if (!url || isLoadingMore) return;
+
+    try {
+      setIsLoadingMore(true);
+      const response = await apiClient.fetchFromURL(url);
+      
+      if (direction === 'next') {
+        // Append new data
+        setData(prev => [...prev, ...response.results]);
+      } else {
+        // Prepend old data
+        setData(prev => [...response.results, ...prev]);
+      }
+      
+      setNextUrl(response.next);
+      setPrevUrl(response.previous);
+    } catch (err) {
+      console.error("Error loading more data:", err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [nextUrl, prevUrl, isLoadingMore]);
 
   // Memoize chart data transformation to prevent unnecessary re-renders
   const chartData = useMemo((): DataPoint[] => {
     return data.map((d) => ({
-      time: d.date.getTime() / 1000, // Unix timestamp in seconds
+      time: d.time, // Already Unix timestamp in seconds from API
       open: d.open,
       high: d.high,
       low: d.low,
@@ -82,32 +111,27 @@ function Pairs() {
 
   if (loading) {
     return (
-      <div
-        style={{
-          height: "100vh",
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        Loading chart data...
+      <div className="flex items-center justify-center h-screen w-full">
+        <div className="text-center">
+          <div className="text-lg font-medium">Loading chart data...</div>
+          <div className="text-sm text-gray-500 mt-2">Fetching candles from API</div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div
-        style={{
-          height: "100vh",
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        Error: {error}
+      <div className="flex items-center justify-center h-screen w-full">
+        <div className="text-center">
+          <div className="text-lg font-medium text-red-600">Error: {error}</div>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -119,19 +143,50 @@ function Pairs() {
   };
 
   return (
-    <div
-      style={{
-        height: "100vh",
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <div className="flex flex-col h-screen w-full">
       <NavigationBar
         currentPair={currentPair}
         onPairChange={handlePairChange}
       />
-      <div style={{ flex: 1, overflow: "hidden" }}>
+      
+      {/* Pagination Info */}
+      <div className="bg-gray-100 px-4 py-2 flex items-center justify-between border-b">
+        <div className="text-sm text-gray-600 flex items-center gap-4">
+          <span>
+            Loaded {data.length.toLocaleString()} of {totalCount.toLocaleString()} candles
+            {isLoadingMore && <span className="ml-2 text-blue-600">Loading...</span>}
+          </span>
+          <span className="text-gray-400">|</span>
+          <span className="flex items-center gap-1">
+            <span className={drawings.length > 0 ? "text-green-600" : "text-gray-500"}>
+              {drawings.length} drawing{drawings.length !== 1 ? 's' : ''}
+            </span>
+            {savedCount > 0 && (
+              <span className="text-xs text-gray-500">
+                ({savedCount} saved)
+              </span>
+            )}
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => loadMoreData('prev')}
+            disabled={!prevUrl || isLoadingMore}
+            className="px-3 py-1 text-sm bg-white border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ← Load Older
+          </button>
+          <button
+            onClick={() => loadMoreData('next')}
+            disabled={!nextUrl || isLoadingMore}
+            className="px-3 py-1 text-sm bg-white border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Load Newer →
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-hidden">
         <Chart data={chartData} />
       </div>
     </div>

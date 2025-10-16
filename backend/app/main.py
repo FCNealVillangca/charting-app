@@ -1,17 +1,43 @@
-import datetime
-
-import MetaTrader5 as mt5
-import pandas as pd
-
-
-def fetch_mt5_data(symbol):
-    mt5.initialize()
-    from_date = datetime.datetime.now() - datetime.timedelta(days=365)
-    to_date = datetime.datetime.now()
-    rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_M15, from_date, to_date)
-    df = pd.DataFrame(rates)
-    df.to_csv(f"{symbol}_15m_1year.csv", index=False)
-    mt5.shutdown()
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+from app.api.v1.api_router import api_router
 
 
-fetch_mt5_data("EURUSD")
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    docs_url=f"{settings.API_V1_STR}/docs",
+)
+
+# Set up CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include API router
+app.include_router(api_router, prefix=settings.API_V1_STR)
+
+
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {
+        "message": "Trading Chart API",
+        "docs": f"{settings.API_V1_STR}/docs"
+    }
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
