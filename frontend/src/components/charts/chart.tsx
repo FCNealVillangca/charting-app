@@ -158,7 +158,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         },
         yAxis: {
           title: {
-            text: "Price",
+            text: "",
           },
           gridLineWidth: 1,
           gridLineColor: "#e0e0e0",
