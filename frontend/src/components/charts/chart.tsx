@@ -6,10 +6,10 @@ import {
   useEffect,
   useState,
   useContext,
+  useCallback,
 } from "react";
-import Highcharts from "highcharts";
-import "highcharts/highcharts-more";
-import "highcharts/modules/stock";
+import ReactECharts from "echarts-for-react";
+import type { EChartsInstance } from "echarts-for-react";
 import type { DataPoint } from "./chart-types";
 import { ChartContext } from "./chart-context";
 import SeriesSidebar from "./series-sidebar";
@@ -27,7 +27,7 @@ import {
 // Exposed imperative API
 export interface BaseChartRef {
   resetZoom: () => void;
-  getChart: () => Highcharts.Chart | null;
+  getChart: () => EChartsInstance | null;
   clearSeries: () => void;
 }
 
@@ -40,8 +40,8 @@ interface ChartProps {
 
 const Chart = forwardRef<BaseChartRef, ChartProps>(
   ({ data, onChartCreated }, ref) => {
-    const chartRef = useRef<HTMLDivElement | null>(null);
-    const chartInstance = useRef<Highcharts.Chart | null>(null);
+    const chartRef = useRef<ReactECharts | null>(null);
+    const chartContainerRef = useRef<HTMLDivElement | null>(null);
     const {
       drawings,
       addDrawing,
@@ -81,14 +81,15 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       return Array.from(seen.values()).sort((a, b) => a.time - b.time);
     }, [data]);
 
-    const highchartsData = useMemo(() => {
+    // Convert data to ECharts candlestick format: [x, open, close, low, high]
+    const echartsData = useMemo(() => {
       if (chartData.length === 0) return [];
       return chartData.map((d, index) => [
         index, // Use index instead of time to avoid gaps
         d.open,
-        d.high,
-        d.low,
         d.close,
+        d.low,
+        d.high,
       ]);
     }, [chartData]);
 
@@ -114,30 +115,22 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
     }, [chartData]);
 
     const options = useMemo(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (): any => ({
-        chart: {
-          type: "candlestick",
-          backgroundColor: "transparent",
-          animation: false,
-          zoomType: selectedData ? false : "x", // Disable zoom when data is selected
-          panning: {
-            enabled: activeTool === "none", // Disable panning when drawing tools are active
-            type: "x", // Enable panning on x-axis only (time)
-          },
-          panKey: "shift", // Hold Shift key to pan instead of zoom
-          resetZoomButton: null, // Completely remove the reset zoom button
-        },
-
-        title: {
-          text: "",
+      () => ({
+        animation: false,
+        grid: {
+          left: 60,
+          right: 60,
+          top: 40,
+          bottom: 60,
+          backgroundColor: 'transparent',
         },
         xAxis: {
-          type: "linear",
-          labels: {
-            formatter: function () {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const index = (this as any).value;
+          type: 'value',
+          min: 0,
+          max: chartData.length > 0 ? chartData.length - 1 : 100,
+          axisLabel: {
+            formatter: (value: number) => {
+              const index = Math.round(value);
               if (index >= 0 && index < chartData.length) {
                 const date = new Date(chartData[index].time * 1000);
                 return date.toLocaleDateString();
@@ -145,140 +138,112 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
               return "";
             },
           },
-          gridLineWidth: 1,
-          gridLineColor: "#e0e0e0",
-          minRange: 100, // Minimum zoom range (100 data points)
-          crosshair: {
-            enabled: true,
-            color: "#666",
-            width: 1,
-            dashStyle: "dash",
-            zIndex: 4,
+          axisPointer: {
+            show: true,
+            lineStyle: {
+              color: '#666',
+              width: 1,
+              type: 'dashed',
+            },
+          },
+          splitLine: {
+            show: true,
+            lineStyle: {
+              color: '#e0e0e0',
+            },
           },
         },
         yAxis: {
-          title: {
-            text: "",
+          type: 'value',
+          scale: true,
+          axisPointer: {
+            show: true,
+            lineStyle: {
+              color: '#666',
+              width: 1,
+              type: 'dashed',
+            },
           },
-          gridLineWidth: 1,
-          gridLineColor: "#e0e0e0",
-          minRange: 0.1, // Minimum zoom range for price
-          crosshair: {
-            enabled: true,
-            color: "#666",
-            width: 1,
-            dashStyle: "dash",
-            zIndex: 4,
+          splitLine: {
+            show: true,
+            lineStyle: {
+              color: '#e0e0e0',
+            },
           },
         },
         series: [
           {
-            type: "candlestick",
-            name: "Price",
-            data: highchartsData,
-            color: "#f23645",
-            upColor: "#089981",
-            lineColor: "#f23645",
-            upLineColor: "#089981",
-            colorByPoint: false,
-            showInLegend: false,
-          } as Highcharts.SeriesCandlestickOptions,
-          ...renderDrawingSeries(drawings, chartData.length, yAxisRange.min, yAxisRange.max),
-        ],
-        plotOptions: {
-          candlestick: {
-            color: "#f23645",
-            upColor: "#089981",
-            lineColor: "#f23645",
-            upLineColor: "#089981",
-          },
-          series: {
-            animation: false, // Disable all series animations including transitions
-            enableMouseTracking: true,
-            states: {
-              hover: {
-                enabled: false, // Disable hover effects to keep points consistent
-              },
-              inactive: {
-                opacity: 1, // Keep full opacity when series is inactive
-              },
+            type: 'candlestick',
+            name: 'Price',
+            data: echartsData,
+            itemStyle: {
+              color: '#089981',      // up candle color
+              color0: '#f23645',     // down candle color
+              borderColor: '#089981',
+              borderColor0: '#f23645',
             },
           },
-        },
-        credits: {
-          enabled: false,
-        },
-        legend: {
-          enabled: false,
-        },
+          ...renderDrawingSeries(drawings, chartData.length, yAxisRange.min, yAxisRange.max),
+        ],
         tooltip: {
-          enabled: false, // Disable the default tooltip
+          show: false,
         },
-        rangeSelector: {
-          enabled: false,
+        toolbox: {
+          show: false,
         },
-        navigator: {
-          enabled: false,
-        },
-        scrollbar: {
-          enabled: false,
-        },
-        exporting: {
-          enabled: false,
-        },
-        accessibility: {
-          enabled: false,
-        },
+        dataZoom: [
+          {
+            type: 'inside',
+            xAxisIndex: 0,
+            disabled: activeTool !== 'none',
+            zoomOnMouseWheel: 'ctrl',
+            moveOnMouseMove: true,
+            moveOnMouseWheel: false,
+            preventDefaultMouseMove: false,
+          },
+        ],
       }),
-      [highchartsData, drawings, chartData, activeTool, selectedData, yAxisRange]
+      [echartsData, drawings, chartData, activeTool, yAxisRange]
     );
 
-    const resetZoomChart = () => {
-      if (chartInstance.current) {
-        chartInstance.current.zoomOut();
+    const getChartInstance = useCallback((): EChartsInstance | null => {
+      return chartRef.current?.getEchartsInstance() || null;
+    }, []);
+
+    const resetZoomChart = useCallback(() => {
+      const instance = getChartInstance();
+      if (instance) {
+        instance.dispatchAction({
+          type: 'dataZoom',
+          start: 0,
+          end: 100,
+        });
       }
-    };
+    }, [getChartInstance]);
 
     useImperativeHandle(ref, () => ({
       resetZoom: resetZoomChart,
-      getChart: () => chartInstance.current,
+      getChart: getChartInstance,
       clearSeries: clearDrawings,
     }));
 
     useEffect(() => {
-      const chartElement = chartRef.current;
-      if (chartElement && highchartsData.length > 0) {
-        // Destroy existing chart if it exists
-        if (chartInstance.current) {
-          chartInstance.current.destroy();
-        }
-
-        // Create new chart
-        chartInstance.current = Highcharts.chart(chartElement, options);
-
-        if (onChartCreated) {
-          onChartCreated(chartElement);
-        }
+      if (chartContainerRef.current && onChartCreated) {
+        onChartCreated(chartContainerRef.current);
       }
-
-      return () => {
-        if (chartInstance.current) {
-          chartInstance.current.destroy();
-          chartInstance.current = null;
-        }
-      };
-    }, [highchartsData, options, onChartCreated]);
+    }, [onChartCreated]);
 
     useEffect(() => {
       const handleResize = () => {
-        if (chartInstance.current) {
-          chartInstance.current.reflow();
+        const instance = getChartInstance();
+        if (instance) {
+          instance.resize();
         }
       };
 
       // Create all event handlers
       const handleMouseMove = createHandleMouseMove(
-        chartInstance,
+        getChartInstance,
         chartData,
         selectedData,
         activeTool,
@@ -287,13 +252,13 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       );
       const handleMouseLeave = createHandleMouseLeave(setTooltipData);
       const handleMouseUp = createHandleMouseUp(
-        chartInstance,
+        getChartInstance,
         selectedData,
         updatePoint,
         setSelectedData
       );
       const handleMouseDown = createHandleMouseDown(
-        chartInstance,
+        getChartInstance,
         activeTool,
         drawings,
         selectedData,
@@ -305,14 +270,14 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         completeDrawing,
         updateDrawing
       );
-      const handleKeyDown = createHandleKeyDown(chartInstance);
-      const handleWheel = createHandleWheel(chartInstance);
+      const handleKeyDown = createHandleKeyDown(getChartInstance);
+      const handleWheel = createHandleWheel(getChartInstance);
 
       window.addEventListener("resize", handleResize);
       window.addEventListener("keydown", handleKeyDown);
 
       // Add event listeners to the chart container
-      const chartElement = chartRef.current;
+      const chartElement = chartContainerRef.current;
       if (chartElement) {
         chartElement.addEventListener("wheel", handleWheel, {
           passive: false,
@@ -347,6 +312,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       setSelectedDrawingId,
       addPointToDrawing,
       completeDrawing,
+      getChartInstance,
     ]);
 
     return (
@@ -386,9 +352,6 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
               height: 50vh;
             }
           }
-          .highcharts-reset-zoom {
-            display: none !important;
-          }
         `}</style>
         <div className="chart-container">
           <Sidebar />
@@ -396,9 +359,16 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
             <div className="chart-content">
               <div style={{ position: "relative", width: "100%", height: "100%" }}>
                 <div
-                  ref={chartRef}
+                  ref={chartContainerRef}
                   style={{ position: "relative", width: "100%", height: "100%" }}
-                />
+                >
+                  <ReactECharts
+                    ref={chartRef}
+                    option={options}
+                    style={{ height: "100%", width: "100%" }}
+                    opts={{ renderer: 'canvas' }}
+                  />
+                </div>
                 {tooltipData.visible && tooltipData.data && (
                   <div
                     style={{

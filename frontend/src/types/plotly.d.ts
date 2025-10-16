@@ -1,5 +1,0 @@
-declare module 'plotly.js-dist' {
-  export * from 'plotly.js';
-  import Plotly from 'plotly.js';
-  export default Plotly;
-}

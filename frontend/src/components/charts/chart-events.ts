@@ -1,4 +1,4 @@
-import Highcharts from "highcharts";
+import type { EChartsInstance } from "echarts-for-react";
 import type { DataPoint, Drawing } from "./chart-types";
 import { handleNoneTool, handleShapeTool, handleLineTool, handleChannelTool, handleHLineTool } from "./chart-tools";
 
@@ -6,7 +6,7 @@ import { handleNoneTool, handleShapeTool, handleLineTool, handleChannelTool, han
  * Handles mouse movement for tooltip display and cursor management
  */
 export function createHandleMouseMove(
-  chartInstance: { current: Highcharts.Chart | null },
+  getChartInstance: () => EChartsInstance | null,
   chartData: DataPoint[],
   selectedData: { drawingId: string; seriesId: string; pointId: string } | null,
   activeTool: string,
@@ -24,27 +24,31 @@ export function createHandleMouseMove(
   }) => void
 ) {
   return (e: MouseEvent) => {
-    if (!chartInstance.current) return;
+    const chart = getChartInstance();
+    if (!chart) return;
 
-    const chart = chartInstance.current;
-    const xAxis = chart.xAxis[0];
-    const yAxis = chart.yAxis[0];
-
-    // Get mouse position relative to chart
-    const rect = chart.container.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Get the chart DOM element
+    const chartDom = chart.getDom();
+    const rect = chartDom.getBoundingClientRect();
+    
+    // Convert pixel coordinates to chart values
+    const pixelPoint = [e.clientX - rect.left, e.clientY - rect.top];
+    const dataPoint = chart.convertFromPixel({ seriesIndex: 0 }, pixelPoint);
+    
+    if (!dataPoint) return;
+    
+    const xValue = dataPoint[0];
+    const yValue = dataPoint[1];
 
     // Show tooltip
-    const xValue = xAxis.toValue(x);
     const index = Math.round(xValue);
     if (index >= 0 && index < chartData.length) {
-      const dataPoint = chartData[index];
+      const dataPointInfo = chartData[index];
       setTooltipData({
         visible: true,
         x: rect.left + 10, // Upper left of chart
         y: rect.top + 10,
-        data: dataPoint,
+        data: dataPointInfo,
       });
     }
 
@@ -54,7 +58,6 @@ export function createHandleMouseMove(
       document.body.style.cursor = "grabbing";
     } else {
       // Check if hovering over a point
-      const yValue = yAxis.toValue(y);
       const hoveringPoint = findPoints(xValue, yValue);
       
       if (hoveringPoint) {
@@ -92,7 +95,7 @@ export function createHandleMouseLeave(
  * Handles mouse button release for point dragging
  */
 export function createHandleMouseUp(
-  chartInstance: { current: Highcharts.Chart | null },
+  getChartInstance: () => EChartsInstance | null,
   selectedData: { drawingId: string; seriesId: string; pointId: string } | null,
   updatePoint: (
     drawingId: string,
@@ -106,20 +109,21 @@ export function createHandleMouseUp(
   ) => void
 ) {
   return (e: MouseEvent) => {
-    if (!chartInstance.current || !selectedData) return;
+    const chart = getChartInstance();
+    if (!chart || !selectedData) return;
 
-    const chart = chartInstance.current;
-    const xAxis = chart.xAxis[0];
-    const yAxis = chart.yAxis[0];
-
-    // Get mouse position relative to chart
-    const rect = chart.container.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // Convert to axis values
-    const xValue = xAxis.toValue(x);
-    const yValue = yAxis.toValue(y);
+    // Get the chart DOM element
+    const chartDom = chart.getDom();
+    const rect = chartDom.getBoundingClientRect();
+    
+    // Convert pixel coordinates to chart values
+    const pixelPoint = [e.clientX - rect.left, e.clientY - rect.top];
+    const dataPoint = chart.convertFromPixel({ seriesIndex: 0 }, pixelPoint);
+    
+    if (!dataPoint) return;
+    
+    const xValue = dataPoint[0];
+    const yValue = dataPoint[1];
 
     // Update the selected point position and deselect
     updatePoint(
@@ -138,7 +142,7 @@ export function createHandleMouseUp(
  * Handles mouse button press for tool actions
  */
 export function createHandleMouseDown(
-  chartInstance: { current: Highcharts.Chart | null },
+  getChartInstance: () => EChartsInstance | null,
   activeTool: string,
   drawings: Drawing[],
   selectedData: { drawingId: string; seriesId: string; pointId: string } | null,
@@ -162,20 +166,21 @@ export function createHandleMouseDown(
   updateDrawing: (drawingId: string, updates: Partial<Drawing>) => void
 ) {
   return (e: MouseEvent) => {
-    if (!chartInstance.current) return;
+    const chart = getChartInstance();
+    if (!chart) return;
 
-    const chart = chartInstance.current;
-    const xAxis = chart.xAxis[0];
-    const yAxis = chart.yAxis[0];
-
-    // Get mouse position relative to chart
-    const rect = chart.container.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // Convert to axis values
-    const xValue = xAxis.toValue(x);
-    const yValue = yAxis.toValue(y);
+    // Get the chart DOM element
+    const chartDom = chart.getDom();
+    const rect = chartDom.getBoundingClientRect();
+    
+    // Convert pixel coordinates to chart values
+    const pixelPoint = [e.clientX - rect.left, e.clientY - rect.top];
+    const dataPoint = chart.convertFromPixel({ seriesIndex: 0 }, pixelPoint);
+    
+    if (!dataPoint) return;
+    
+    const xValue = dataPoint[0];
+    const yValue = dataPoint[1];
 
     // Prepare common parameters for tool handlers
     const toolHandlerParams = {
@@ -221,28 +226,48 @@ export function createHandleMouseDown(
  * Handles keyboard input for chart navigation
  */
 export function createHandleKeyDown(
-  chartInstance: { current: Highcharts.Chart | null }
+  getChartInstance: () => EChartsInstance | null
 ) {
   return (e: KeyboardEvent) => {
-    if (!chartInstance.current) return;
+    const chart = getChartInstance();
+    if (!chart) return;
 
-    const xAxis = chartInstance.current.xAxis[0];
-    const extremes = xAxis.getExtremes();
-    const panStep = (extremes.max - extremes.min) / 10; // Pan 10% of current range
+    // Get current dataZoom state
+    const option = chart.getOption() as any;
+    const dataZoom = option.dataZoom?.[0];
+    
+    if (!dataZoom) return;
+    
+    const start = dataZoom.start || 0;
+    const end = dataZoom.end || 100;
+    const range = end - start;
+    const panStep = range / 10; // Pan 10% of current range
 
     switch (e.key) {
       case "ArrowLeft":
         e.preventDefault();
-        xAxis.setExtremes(extremes.min - panStep, extremes.max - panStep);
+        chart.dispatchAction({
+          type: 'dataZoom',
+          start: Math.max(0, start - panStep),
+          end: Math.max(panStep, end - panStep),
+        });
         break;
       case "ArrowRight":
         e.preventDefault();
-        xAxis.setExtremes(extremes.min + panStep, extremes.max + panStep);
+        chart.dispatchAction({
+          type: 'dataZoom',
+          start: Math.min(100 - range, start + panStep),
+          end: Math.min(100, end + panStep),
+        });
         break;
       case "Home":
         e.preventDefault();
         // Reset to show all data
-        xAxis.setExtremes(undefined, undefined);
+        chart.dispatchAction({
+          type: 'dataZoom',
+          start: 0,
+          end: 100,
+        });
         break;
     }
   };
@@ -252,23 +277,35 @@ export function createHandleKeyDown(
  * Handles mouse wheel for panning when Shift is held
  */
 export function createHandleWheel(
-  chartInstance: { current: Highcharts.Chart | null }
+  getChartInstance: () => EChartsInstance | null
 ) {
   return (e: WheelEvent) => {
-    if (!chartInstance.current) return;
+    const chart = getChartInstance();
+    if (!chart) return;
 
     // Check if Shift key is held down
     if (e.shiftKey) {
       e.preventDefault();
 
-      const xAxis = chartInstance.current.xAxis[0];
-      const extremes = xAxis.getExtremes();
-      const panStep = (extremes.max - extremes.min) / 20; // Pan 5% of current range
+      // Get current dataZoom state
+      const option = chart.getOption() as any;
+      const dataZoom = option.dataZoom?.[0];
+      
+      if (!dataZoom) return;
+      
+      const start = dataZoom.start || 0;
+      const end = dataZoom.end || 100;
+      const range = end - start;
+      const panStep = range / 20; // Pan 5% of current range
 
       // Determine pan direction based on wheel delta
       const panAmount = e.deltaY > 0 ? panStep : -panStep;
 
-      xAxis.setExtremes(extremes.min + panAmount, extremes.max + panAmount);
+      chart.dispatchAction({
+        type: 'dataZoom',
+        start: Math.max(0, Math.min(100 - range, start + panAmount)),
+        end: Math.max(range, Math.min(100, end + panAmount)),
+      });
     }
   };
 }

@@ -1,47 +1,27 @@
-import Highcharts from "highcharts";
 import type { Drawing } from "./chart-types";
 import { extendLineToRange } from "./chart-utils";
 
 /**
- * Creates a marker configuration object
+ * Creates a marker configuration object for ECharts
  */
 function createMarker(
   color: string,
-  radius: number,
+  size: number,
   symbol?: string
-): Highcharts.PointMarkerOptionsObject {
+) {
   return {
-    radius,
-    ...(symbol && { symbol }),
-    fillColor: color,
-    lineColor: "#fff",
-    lineWidth: 2,
-    states: {
-      hover: {
-        enabled: false,
-      },
+    symbol: symbol || 'circle',
+    symbolSize: size,
+    itemStyle: {
+      color: color,
+      borderColor: '#fff',
+      borderWidth: 2,
     },
   };
 }
 
 /**
- * Creates base series options common to all drawing types
- */
-function createBaseSeriesOptions(
-  drawing: Drawing,
-  seriesIndex: number,
-  points: { x: number; y: number }[]
-) {
-  return {
-    name: `${drawing.name} - ${seriesIndex + 1}`,
-    data: points.map((p) => [p.x, p.y]),
-    showInLegend: false,
-    enableMouseTracking: true,
-  };
-}
-
-/**
- * Renders drawings as Highcharts series
+ * Renders drawings as ECharts series
  * Handles different drawing types: lines, dots, and shapes
  */
 export function renderDrawingSeries(
@@ -49,33 +29,47 @@ export function renderDrawingSeries(
   chartDataLength: number = 0,
   yMin: number = -Infinity,
   yMax: number = Infinity
-): Highcharts.SeriesOptionsType[] {
+): any[] {
   return drawings.flatMap((drawing) =>
     drawing.series.flatMap((s, index) => {
-      const baseOptions = createBaseSeriesOptions(drawing, index, s.points);
       const color = drawing.color || "#000000"; // Default to black for all drawings
 
       switch (drawing.type) {
         case "line":
           // Complete line with 2+ points - render as line
           if (s.points.length >= 2) {
-            return {
-              ...baseOptions,
-              type: "line" as const,
-              color,
-              lineColor: color,
-              marker: createMarker(color, 4, "circle"),
-              lineWidth: 2,
-            } as Highcharts.SeriesLineOptions;
+            return [
+              {
+                type: 'line',
+                name: `${drawing.name} - ${index + 1}`,
+                data: s.points.map((p) => [p.x, p.y]),
+                lineStyle: {
+                  color,
+                  width: 2,
+                },
+                symbol: 'circle',
+                symbolSize: 8,
+                itemStyle: {
+                  color,
+                  borderColor: '#fff',
+                  borderWidth: 2,
+                },
+                showSymbol: true,
+                emphasis: {
+                  disabled: true,
+                },
+              }
+            ];
           } else {
             // Incomplete line - render first point as scatter
-            return {
-              ...baseOptions,
-              type: "scatter" as const,
-              color,
-              marker: createMarker(color, 4, "circle"),
-              lineWidth: 0,
-            } as Highcharts.SeriesScatterOptions;
+            return [
+              {
+                type: 'scatter',
+                name: `${drawing.name} - ${index + 1}`,
+                data: s.points.map((p) => [p.x, p.y]),
+                ...createMarker(color, 8, 'circle'),
+              }
+            ];
           }
 
         case "channel":
@@ -86,13 +80,14 @@ export function renderDrawingSeries(
           
           if (isCenterPoint) {
             // Render center point as a single draggable dot
-            return {
-              ...baseOptions,
-              type: "scatter" as const,
-              color: "#000000", // Black like boundary dots
-              marker: createMarker("#000000", 4, "circle"), // Same size as boundary dots
-              lineWidth: 0,
-            } as Highcharts.SeriesScatterOptions;
+            return [
+              {
+                type: 'scatter',
+                name: `${drawing.name} - center`,
+                data: s.points.map((p) => [p.x, p.y]),
+                ...createMarker("#000000", 8, 'circle'),
+              }
+            ];
           }
           
           if (isDashedLine && s.points.length >= 2) {
@@ -113,16 +108,24 @@ export function renderDrawingSeries(
             }
             
             // Render dashed line (no draggable markers on the line endpoints)
-            return {
-              ...baseOptions,
-              data: lineData,
-              type: "line" as const,
-              color: "#888888", // Gray for dashed line
-              marker: { enabled: false }, // No markers on dashed line
-              lineWidth: 1,
-              dashStyle: "Dash",
-              enableMouseTracking: false, // Can't interact with dashed line
-            } as Highcharts.SeriesLineOptions;
+            return [
+              {
+                type: 'line',
+                name: `${drawing.name} - dashed`,
+                data: lineData,
+                lineStyle: {
+                  color: "#888888",
+                  width: 1,
+                  type: 'dashed',
+                },
+                symbol: 'none',
+                showSymbol: false,
+                emphasis: {
+                  disabled: true,
+                },
+                silent: true,
+              }
+            ];
           }
           
           // Render boundary lines with extension
@@ -149,45 +152,63 @@ export function renderDrawingSeries(
               return [
                 // Extended line without markers
                 {
+                  type: 'line',
                   name: `${drawing.name} - ${index + 1} (line)`,
                   data: [[p1.x, p1.y], [p2.x, p2.y]],
-                  type: "line" as const,
-                  color,
-                  lineColor: color,
-                  marker: { enabled: false },
-                  lineWidth: 2,
-                  showInLegend: false,
-                  enableMouseTracking: false,
-                } as Highcharts.SeriesLineOptions,
+                  lineStyle: {
+                    color,
+                    width: 2,
+                  },
+                  symbol: 'none',
+                  showSymbol: false,
+                  emphasis: {
+                    disabled: true,
+                  },
+                  silent: true,
+                },
                 // Control points with markers (interactive)
                 {
-                  ...baseOptions,
-                  type: "scatter" as const,
-                  color,
-                  marker: createMarker(color, 4, "circle"),
-                  lineWidth: 0,
-                } as Highcharts.SeriesScatterOptions,
-              ] as any;
+                  type: 'scatter',
+                  name: `${drawing.name} - ${index + 1} (points)`,
+                  data: s.points.map((p) => [p.x, p.y]),
+                  ...createMarker(color, 8, 'circle'),
+                }
+              ];
             } else {
               // Incomplete parallel line (not base line) - render normal line
-              return {
-                ...baseOptions,
-                type: "line" as const,
-                color,
-                lineColor: color,
-                marker: createMarker(color, 4, "circle"),
-                lineWidth: 2,
-              } as Highcharts.SeriesLineOptions;
+              return [
+                {
+                  type: 'line',
+                  name: `${drawing.name} - ${index + 1}`,
+                  data: s.points.map((p) => [p.x, p.y]),
+                  lineStyle: {
+                    color,
+                    width: 2,
+                  },
+                  symbol: 'circle',
+                  symbolSize: 8,
+                  itemStyle: {
+                    color,
+                    borderColor: '#fff',
+                    borderWidth: 2,
+                  },
+                  showSymbol: true,
+                  emphasis: {
+                    disabled: true,
+                  },
+                }
+              ];
             }
           } else {
             // Incomplete channel - render first point as scatter
-            return {
-              ...baseOptions,
-              type: "scatter" as const,
-              color,
-              marker: createMarker(color, 4, "circle"),
-              lineWidth: 0,
-            } as Highcharts.SeriesScatterOptions;
+            return [
+              {
+                type: 'scatter',
+                name: `${drawing.name} - ${index + 1}`,
+                data: s.points.map((p) => [p.x, p.y]),
+                ...createMarker(color, 8, 'circle'),
+              }
+            ];
           }
 
         case "hline":
@@ -198,28 +219,28 @@ export function renderDrawingSeries(
             return [
               // Extended horizontal line
               {
+                type: 'line',
                 name: drawing.name,
                 data: [[0, yValue], [chartDataLength - 1, yValue]],
-                type: "line" as const,
-                color,
-                lineColor: color,
-                marker: { enabled: false },
-                lineWidth: 2,
-                showInLegend: false,
-                enableMouseTracking: false,
-              } as Highcharts.SeriesLineOptions,
+                lineStyle: {
+                  color,
+                  width: 2,
+                },
+                symbol: 'none',
+                showSymbol: false,
+                emphasis: {
+                  disabled: true,
+                },
+                silent: true,
+              },
               // Single control point in the middle for dragging
               {
+                type: 'scatter',
                 name: `${drawing.name} - control`,
                 data: [[(chartDataLength - 1) / 2, yValue]],
-                type: "scatter" as const,
-                color,
-                marker: createMarker(color, 4, "circle"),
-                lineWidth: 0,
-                showInLegend: false,
-                enableMouseTracking: true,
-              } as Highcharts.SeriesScatterOptions,
-            ] as any;
+                ...createMarker(color, 8, 'circle'),
+              }
+            ];
           } else {
             return [];
           }
@@ -232,15 +253,15 @@ export function renderDrawingSeries(
         default:
           // Shape drawing types - use drawing type as symbol, or "circle" for dot
           const symbol = drawing.type === "dot" ? "circle" : drawing.type;
-          return {
-            ...baseOptions,
-            type: "scatter" as const,
-            color,
-            marker: createMarker(color, 6, symbol),
-            lineWidth: 0,
-          } as Highcharts.SeriesScatterOptions;
+          return [
+            {
+              type: 'scatter',
+              name: `${drawing.name} - ${index + 1}`,
+              data: s.points.map((p) => [p.x, p.y]),
+              ...createMarker(color, 12, symbol),
+            }
+          ];
       }
     })
   );
 }
-
