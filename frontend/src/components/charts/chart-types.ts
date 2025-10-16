@@ -1,5 +1,3 @@
-import type { EChartsInstance } from 'echarts-for-react';
-
 export interface DataPoint {
   time: number; // Unix timestamp in seconds
   open: number;
@@ -11,7 +9,7 @@ export interface DataPoint {
 // BaseChartRef interface will be moved here from BaseChart.tsx
 export interface BaseChartRef {
   resetZoom: () => void;
-  getChart: () => EChartsInstance | null;
+  getChart: () => Highcharts.Chart | null;
   clearSeries: () => void;
 }
 
