@@ -39,11 +39,7 @@ class DrawingService:
             points_list = []
             for point_model in sorted(series_model.points, key=lambda p: p.order_index):
                 points_list.append({
-<<<<<<< HEAD
-                    "id": point_model.id,
-=======
                     "id": f"point-{point_model.id}",
->>>>>>> 76340a99410339902d0a8777bea935c3f59bb446
                     "x": point_model.x,
                     "y": point_model.y
                 })
@@ -100,13 +96,6 @@ class DrawingService:
         """Create a new drawing"""
         db = self._get_db()
         try:
-<<<<<<< HEAD
-            # Get or create pair
-            pair = self._get_or_create_pair(db, drawing.pair)
-            
-            # Create drawing (ID will be auto-generated)
-            drawing_model = DrawingModel(
-=======
             # Check if drawing with this ID already exists
             existing = db.query(DrawingModel).filter(DrawingModel.id == drawing.id).first()
             if existing:
@@ -118,7 +107,6 @@ class DrawingService:
             # Create drawing
             drawing_model = DrawingModel(
                 id=drawing.id,
->>>>>>> 76340a99410339902d0a8777bea935c3f59bb446
                 name=drawing.name,
                 type=drawing.type,
                 color=drawing.color,
@@ -126,19 +114,12 @@ class DrawingService:
                 pair_id=pair.id
             )
             db.add(drawing_model)
-<<<<<<< HEAD
-            db.flush()  # Flush to get the auto-generated ID
-=======
             db.flush()  # Flush to get the drawing in the session
->>>>>>> 76340a99410339902d0a8777bea935c3f59bb446
             
             # Create series and points
             for series_idx, series_data in enumerate(drawing.series):
                 series_model = SeriesModel(
-<<<<<<< HEAD
-=======
                     id=series_data.id,
->>>>>>> 76340a99410339902d0a8777bea935c3f59bb446
                     drawing_id=drawing_model.id,
                     order_index=series_idx
                 )
@@ -183,81 +164,6 @@ class DrawingService:
             
             # Update series if provided
             if updates.series is not None:
-<<<<<<< HEAD
-                # Track which series IDs are in the update
-                updated_series_ids = set()
-                
-                for series_idx, series_data in enumerate(updates.series):
-                    if series_data.id is not None:
-                        # Update existing series
-                        series_model = db.query(SeriesModel).filter(
-                            SeriesModel.id == series_data.id,
-                            SeriesModel.drawing_id == drawing_id
-                        ).first()
-                        
-                        if series_model:
-                            series_model.order_index = series_idx
-                            updated_series_ids.add(series_data.id)
-                            
-                            # Track which point IDs are in the update
-                            updated_point_ids = set()
-                            
-                            for point_idx, point_data in enumerate(series_data.points):
-                                if point_data.id is not None:
-                                    # Update existing point
-                                    point_model = db.query(PointModel).filter(
-                                        PointModel.id == point_data.id,
-                                        PointModel.series_id == series_model.id
-                                    ).first()
-                                    
-                                    if point_model:
-                                        point_model.x = point_data.x
-                                        point_model.y = point_data.y
-                                        point_model.order_index = point_idx
-                                        updated_point_ids.add(point_data.id)
-                                else:
-                                    # Create new point
-                                    point_model = PointModel(
-                                        series_id=series_model.id,
-                                        x=point_data.x,
-                                        y=point_data.y,
-                                        order_index=point_idx
-                                    )
-                                    db.add(point_model)
-                                    db.flush()
-                                    updated_point_ids.add(point_model.id)
-                            
-                            # Delete points not in update
-                            db.query(PointModel).filter(
-                                PointModel.series_id == series_model.id,
-                                ~PointModel.id.in_(updated_point_ids)
-                            ).delete(synchronize_session=False)
-                    else:
-                        # Create new series
-                        series_model = SeriesModel(
-                            drawing_id=drawing_model.id,
-                            order_index=series_idx
-                        )
-                        db.add(series_model)
-                        db.flush()
-                        updated_series_ids.add(series_model.id)
-                        
-                        # Create points for new series
-                        for point_idx, point_data in enumerate(series_data.points):
-                            point_model = PointModel(
-                                series_id=series_model.id,
-                                x=point_data.x,
-                                y=point_data.y,
-                                order_index=point_idx
-                            )
-                            db.add(point_model)
-                
-                # Delete series not in update (cascade will delete points)
-                db.query(SeriesModel).filter(
-                    SeriesModel.drawing_id == drawing_id,
-                    ~SeriesModel.id.in_(updated_series_ids)
-                ).delete(synchronize_session=False)
-=======
                 # Delete existing series (cascade will delete points)
                 db.query(SeriesModel).filter(SeriesModel.drawing_id == drawing_id).delete()
                 db.flush()
@@ -280,7 +186,6 @@ class DrawingService:
                             order_index=point_idx
                         )
                         db.add(point_model)
->>>>>>> 76340a99410339902d0a8777bea935c3f59bb446
             
             db.commit()
             db.refresh(drawing_model)

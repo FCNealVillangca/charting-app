@@ -7,11 +7,7 @@ from app.database.base import Base
 class Drawing(Base):
     __tablename__ = "drawings"
 
-<<<<<<< HEAD
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
-=======
     id = Column(String, primary_key=True)  # UUID from frontend
->>>>>>> 76340a99410339902d0a8777bea935c3f59bb446
     name = Column(String, nullable=False)
     type = Column(String, nullable=False)  # dot, line, channel, hline, etc.
     color = Column(String, nullable=False)
