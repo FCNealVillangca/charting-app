@@ -14,8 +14,10 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
     
-    # Data configuration
-    DATA_DIR: Path = Path(__file__).parent.parent / "data"
+    # Database configuration
+    DATABASE_URL: str = "sqlite:///./charting_app.db"
+    
+    # Data configuration (CSV only - drawings now in SQLite)
     CSV_FILE_PATH: Path = Path(__file__).parent.parent / "EURUSD_15m_1year.csv"
     
     # Pagination defaults
