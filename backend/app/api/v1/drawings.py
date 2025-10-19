@@ -25,7 +25,7 @@ async def get_drawings(
 
 
 @router.get("/{drawing_id}", response_model=Drawing)
-async def get_drawing(drawing_id: str):
+async def get_drawing(drawing_id: int):
     """
     Get a specific drawing by ID.
     """
@@ -52,7 +52,7 @@ async def create_drawing(drawing: DrawingCreate):
 
 
 @router.put("/{drawing_id}", response_model=Drawing)
-async def update_drawing(drawing_id: str, updates: DrawingUpdate):
+async def update_drawing(drawing_id: int, updates: DrawingUpdate):
     """
     Update an existing drawing.
     """
@@ -68,7 +68,7 @@ async def update_drawing(drawing_id: str, updates: DrawingUpdate):
 
 
 @router.delete("/{drawing_id}")
-async def delete_drawing(drawing_id: str):
+async def delete_drawing(drawing_id: int):
     """
     Delete a specific drawing by ID.
     """

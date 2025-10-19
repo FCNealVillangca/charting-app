@@ -64,7 +64,7 @@ export function useDrawingsPersistence({
         // Save if: (new complete drawing) OR (existing drawing that changed)
         if (hasChanged && (isSaved || !isSaved)) {
           try {
-            if (isSaved) {
+            if (isSaved && drawing.id !== null) {
               // Update existing drawing
               await apiClient.updateDrawing(drawing.id, {
                 name: drawing.name,
@@ -74,10 +74,11 @@ export function useDrawingsPersistence({
                 metadata: drawing.metadata,
                 pair: pair.toUpperCase(),
               });
-            } else {
-              // Create new drawing
-              await apiClient.createDrawing({
-                id: drawing.id,
+              // Update last saved state
+              lastSavedState.current.set(drawing.id, drawingJson);
+            } else if (drawing.id === null) {
+              // Create new drawing (no ID yet)
+              const createdDrawing = await apiClient.createDrawing({
                 name: drawing.name,
                 type: drawing.type,
                 color: drawing.color,
@@ -85,11 +86,13 @@ export function useDrawingsPersistence({
                 metadata: drawing.metadata,
                 pair: pair.toUpperCase(),
               });
-              savedDrawingIds.current.add(drawing.id);
+              // Track as saved using the new database ID
+              savedDrawingIds.current.add(createdDrawing.id);
+              lastSavedState.current.set(createdDrawing.id, JSON.stringify(createdDrawing));
+              
+              // TODO: Update local drawing with database ID
+              console.log('Created drawing with ID:', createdDrawing.id);
             }
-            
-            // Update last saved state
-            lastSavedState.current.set(drawing.id, drawingJson);
           } catch (error) {
             console.error(`Error saving drawing ${drawing.id}:`, error);
           }
@@ -113,6 +116,7 @@ export function useDrawingsPersistence({
 
     if (deletedDrawingIds.length > 0) {
       deletedDrawingIds.forEach(async (drawingId) => {
+        if (drawingId === null) return; // Skip drawings that were never saved
         try {
           await apiClient.deleteDrawing(drawingId);
           savedDrawingIds.current.delete(drawingId);

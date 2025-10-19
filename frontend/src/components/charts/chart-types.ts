@@ -14,12 +14,12 @@ export interface BaseChartRef {
 }
 
 export interface Series {
-  id: string;
-  points: { id: string; x: number; y: number }[];
+  id: number | null;
+  points: { id: number | null; x: number; y: number }[];
 }
 
 export interface Drawing {
-  id: string;
+  id: number | null;
   name: string;
   type: 'dot' | 'triangle' | 'square' | 'circle' | 'diamond' | 'line' | 'trendline' | 'fibonacci' | 'channel' | 'rectangle' | 'hline';
   color: string;
@@ -31,26 +31,26 @@ export interface ChartContextType {
   drawings: Drawing[];
   addDrawing: (drawing: Drawing) => void;
   clearDrawings: () => void;
-  updatePoint: (drawingId: string, seriesId: string, pointId: string, x: number, y: number) => void;
-  updateDrawing: (drawingId: string, updates: Partial<Drawing>) => void;
-  selectedData: { drawingId: string; seriesId: string; pointId: string } | null;
-  setSelectedData: (point: { drawingId: string; seriesId: string; pointId: string } | null) => void;
-  selectedDrawingId: string | null;
-  setSelectedDrawingId: (drawingId: string | null) => void;
-  findPoints: (x: number, y: number, xTolerance?: number, yTolerance?: number) => { drawingId: string; seriesId: string; pointId: string } | null;
+  updatePoint: (drawingId: number | null, seriesId: number | null, pointId: number | null, x: number, y: number) => void;
+  updateDrawing: (drawingId: number | null, updates: Partial<Drawing>) => void;
+  selectedData: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null;
+  setSelectedData: (point: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null) => void;
+  selectedDrawingId: number | null;
+  setSelectedDrawingId: (drawingId: number | null) => void;
+  findPoints: (x: number, y: number, xTolerance?: number, yTolerance?: number) => { drawingId: number | null; seriesId: number | null; pointId: number | null } | null;
   chartRef: React.RefObject<BaseChartRef | null>;
   activeTool: string;
   setActiveTool: (tool: string) => void;
   resetZoom: () => void;
   toggleCrosshair: () => void;
   toggleDotMode: () => void;
-  deleteDrawing: (drawingId: string) => void;
-  addPointToDrawing: (drawingId: string, seriesId: string, point: { x: number; y: number }) => void;
-  removePoint: (drawingId: string, seriesId: string, pointId: string) => void;
+  deleteDrawing: (drawingId: number | null) => void;
+  addPointToDrawing: (drawingId: number | null, seriesId: number | null, point: { x: number; y: number }) => void;
+  removePoint: (drawingId: number | null, seriesId: number | null, pointId: number | null) => void;
   toggleLineMode: () => void;
   toggleChannelMode: () => void;
   toggleHLineMode: () => void;
   getIncompleteDrawing: () => Drawing | undefined;
-  completeDrawing: (drawingId: string) => void;
+  completeDrawing: (drawingId: number | null) => void;
 }
 

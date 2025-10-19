@@ -1,5 +1,10 @@
 # Cursor Rules for Charting App
 
+## Backend Dependencies
+- **SQLAlchemy** and **Alembic** are installed separately, NOT in requirements.txt
+- Database: SQLite with SQLAlchemy ORM
+- Install with: `pip install sqlalchemy alembic`
+
 ## Context State Management
 - **NEVER** add new state to ChartContext unless absolutely necessary
 - ChartContext should only contain state that needs to be shared across multiple components

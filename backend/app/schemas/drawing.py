@@ -4,20 +4,20 @@ from typing import Optional, Any
 
 class Point(BaseModel):
     """Point in a series"""
-    id: str
+    id: Optional[int] = None
     x: float
     y: float
 
 
 class Series(BaseModel):
     """Series containing points"""
-    id: str
+    id: Optional[int] = None
     points: list[Point]
 
 
 class Drawing(BaseModel):
     """Drawing/Series model"""
-    id: str
+    id: int
     name: str
     type: str = Field(..., description="Type of drawing: dot, line, channel, hline, etc.")
     color: str
@@ -31,7 +31,6 @@ class Drawing(BaseModel):
 
 class DrawingCreate(BaseModel):
     """Request model for creating a drawing"""
-    id: str
     name: str
     type: str
     color: str

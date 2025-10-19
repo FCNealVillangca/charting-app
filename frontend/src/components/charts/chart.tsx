@@ -127,9 +127,9 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           type: "candlestick",
           backgroundColor: "transparent",
           animation: false,
-          zoomType: undefined, // Zoom disabled by default, managed dynamically
+          zoomType: "x", // Enable horizontal zoom
           panning: {
-            enabled: false, // Panning managed dynamically
+            enabled: true, // Enable panning
             type: "x",
           },
           panKey: "shift",
@@ -266,6 +266,16 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         // Create new chart
         chartInstance.current = Highcharts.chart(chartElement, options);
         prevDataLengthRef.current = highchartsData.length;
+
+        // Force consistent initial viewport - always show last 400 candles
+        const dataLength = highchartsData.length;
+        const visibleCandles = 400;
+        chartInstance.current.xAxis[0].setExtremes(
+          Math.max(0, dataLength - visibleCandles),
+          dataLength - 1,
+          true,
+          false
+        );
 
         if (onChartCreated) {
           onChartCreated(chartElement);

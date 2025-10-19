@@ -67,16 +67,16 @@ export function handleShapeTool(
 
   const drawingNumber = drawings.length + 1;
   const newDrawing: Drawing = {
-    id: `drawing_${Date.now()}_${Math.random()}`,
+    id: null,
     name: `Point ${drawingNumber}`,
     type: toolType as any,
     color: "#000000", // Black
     series: [
       {
-        id: `series_${Date.now()}_${Math.random()}`,
+        id: null,
         points: [
           {
-            id: `point_${Date.now()}_${Math.random()}`,
+            id: null,
             x: xValue,
             y: yValue,
           },
@@ -113,20 +113,17 @@ export function handleLineTool(params: ToolHandlerParams): void {
 
   if (!incompleteDrawing) {
     // First click - create line with first point
-    const drawingId = `drawing_${Date.now()}_${Math.random()}`;
-    const seriesId = `series_${Date.now()}_${Math.random()}`;
-
     const newDrawing: Drawing = {
-      id: drawingId,
+      id: null,
       name: `Line ${drawings.filter((d) => d.type === "line").length + 1}`,
       type: "line" as const,
       color: "#000000", // Black
       series: [
         {
-          id: seriesId,
+          id: null,
           points: [
             {
-              id: `point_${Date.now()}_${Math.random()}`,
+              id: null,
               x: xValue,
               y: yValue,
             },
@@ -182,20 +179,17 @@ export function handleChannelTool(params: ToolHandlerParams): void {
 
   if (!incompleteDrawing) {
     // First click - create channel with first point
-    const drawingId = `drawing_${Date.now()}_${Math.random()}`;
-    const seriesId = `series_${Date.now()}_${Math.random()}`;
-
     const newDrawing: Drawing = {
-      id: drawingId,
+      id: null,
       name: `Channel ${drawings.filter((d) => d.type === "channel").length + 1}`,
       type: "channel" as const,
       color: "#000000", // Black
       series: [
         {
-          id: seriesId,
+          id: null,
           points: [
             {
-              id: `point_${Date.now()}_${Math.random()}`,
+              id: null,
               x: xValue,
               y: yValue,
             },
@@ -229,16 +223,15 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       const [parallelStart, parallelEnd] = calculateParallelLine(p1, p2, distance);
       
       // Create the parallel series with independent points
-      const parallelSeriesId = `series_${Date.now()}_${Math.random()}`;
       const parallelSeries = {
-        id: parallelSeriesId,
+        id: null,
         points: [
           {
-            id: `point_${Date.now()}_${Math.random()}`,
+            id: null,
             ...parallelStart,
           },
           {
-            id: `point_${Date.now()}_1_${Math.random()}`,
+            id: null,
             ...parallelEnd,
           },
         ],
@@ -259,16 +252,15 @@ export function handleChannelTool(params: ToolHandlerParams): void {
         };
         
         // Create dashed line series
-        const dashedSeriesId = `series_${Date.now()}_2_${Math.random()}`;
         const dashedSeries = {
-          id: dashedSeriesId,
+          id: null,
           points: [
             {
-              id: `point_${Date.now()}_dashed_${Math.random()}`,
+              id: null,
               ...dashedStart,
             },
             {
-              id: `point_${Date.now()}_dashed_1_${Math.random()}`,
+              id: null,
               ...dashedEnd,
             },
           ],
@@ -279,12 +271,11 @@ export function handleChannelTool(params: ToolHandlerParams): void {
         const centerY = (baseSeries.points[0].y + baseSeries.points[1].y + parallelStart.y + parallelEnd.y) / 4;
         
         // Create center point series (just ONE point in the middle)
-        const centerSeriesId = `series_${Date.now()}_3_${Math.random()}`;
         const centerSeries = {
-          id: centerSeriesId,
+          id: null,
           points: [
             {
-              id: `point_${Date.now()}_center_${Math.random()}`,
+              id: null,
               x: centerX,
               y: centerY,
             },
@@ -327,20 +318,18 @@ export function handleHLineTool(params: ToolHandlerParams): void {
   } = params;
 
   const drawingNumber = drawings.filter((d) => d.type === "hline").length + 1;
-  const drawingId = `drawing_${Date.now()}_${Math.random()}`;
-  const seriesId = `series_${Date.now()}_${Math.random()}`;
 
   const newDrawing: Drawing = {
-    id: drawingId,
+    id: null,
     name: `H-Line ${drawingNumber}`,
     type: "hline" as const,
     color: "#000000", // Black
     series: [
       {
-        id: seriesId,
+        id: null,
         points: [
           {
-            id: `point_${Date.now()}_${Math.random()}`,
+            id: null,
             x: 0, // Will be extended across chart
             y: yValue,
           },
