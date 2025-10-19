@@ -34,7 +34,6 @@ function Pairs() {
     const loadDrawings = async () => {
       try {
         const response = await apiClient.getDrawings(currentPair);
-        console.log(`Loaded ${response.count} saved drawings for ${currentPair}`);
         
         // Add each drawing to the chart
         response.drawings.forEach((drawing) => {
@@ -57,12 +56,6 @@ function Pairs() {
           limit: 500, // Load first 500 candles initially
         });
 
-        console.log("📊 Initial data fetch response:", {
-          resultsLength: response.results.length,
-          next: response.next,
-          previous: response.previous,
-          count: response.count
-        });
         setData(response.results);
         setNextUrl(response.next);
         setPrevUrl(response.previous);
@@ -107,49 +100,31 @@ function Pairs() {
 
   // Auto-fetch when reaching the start of the chart
   const handleReachStart = useCallback(async () => {
-    console.log("🔥 handleReachStart called!");
-    console.log("📋 State check:", { prevUrl: !!prevUrl, isAutoFetching, isLoadingMore });
     
     if (!prevUrl) {
-      console.log("❌ No prevUrl available");
       return;
     }
     if (isAutoFetching) {
-      console.log("❌ Already auto-fetching");
       return;
     }
     if (isLoadingMore) {
-      console.log("❌ Already loading more");
       return;
     }
 
     try {
-      console.log("🔄 Setting isAutoFetching to true");
       setIsAutoFetching(true);
-      console.log("🔄 Auto-fetching more historical data from:", prevUrl);
       const response = await apiClient.fetchFromURL(prevUrl);
       
-      console.log(`📊 API Response:`, { 
-        resultsLength: response.results.length, 
-        next: response.next, 
-        previous: response.previous,
-        firstCandle: response.results[0],
-        lastCandle: response.results[response.results.length - 1]
-      });
       
       // Prepend old data
       setData(prev => {
         const newData = [...response.results, ...prev];
-        console.log(`📈 Data update: ${prev.length} -> ${newData.length} candles`);
-        console.log(`📈 First 3 new candles:`, newData.slice(0, 3));
         return newData;
       });
       setPrevUrl(response.previous);
-      console.log("✅ Data updated successfully");
     } catch (err) {
       console.error("❌ Error auto-fetching data:", err);
     } finally {
-      console.log("🔄 Setting isAutoFetching to false");
       setIsAutoFetching(false);
     }
   }, [prevUrl, isAutoFetching, isLoadingMore]);

@@ -42,11 +42,6 @@ interface ChartProps {
 
 const Chart = forwardRef<BaseChartRef, ChartProps>(
   ({ data, onChartCreated, onReachStart }, ref) => {
-    // console.log("🎨 Chart component rendered with:", { 
-    //   dataLength: data.length, 
-    //   hasOnReachStart: !!onReachStart,
-    //   onReachStartType: typeof onReachStart
-    // });
     const chartRef = useRef<HTMLDivElement | null>(null);
     const chartInstance = useRef<Highcharts.Chart | null>(null);
     const {
@@ -87,7 +82,6 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       }
       const result = Array.from(seen.values()).sort((a, b) => a.time - b.time);
       if (data.length !== result.length) {
-        console.log(`📊 Chart received ${data.length} data points, processed to ${result.length} unique candles`);
       }
       return result;
     }, [data]);
@@ -101,7 +95,6 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         d.low,
         d.close,
       ]);
-      // console.log(`📈 Highcharts data: ${result.length} points, first: [${result[0]?.join(', ')}], last: [${result[result.length-1]?.join(', ')}]`);
       return result;
     }, [chartData]);
 

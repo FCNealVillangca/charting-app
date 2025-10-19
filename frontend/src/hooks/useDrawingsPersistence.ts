@@ -68,7 +68,6 @@ export function useDrawingsPersistence({
 
             // Mark as saved
             savedDrawingIds.current.add(drawing.id);
-            console.log(`✓ Drawing "${drawing.name}" saved to backend`);
           } catch (error) {
             console.error(`Error saving drawing ${drawing.id}:`, error);
           }
@@ -95,7 +94,6 @@ export function useDrawingsPersistence({
         try {
           await apiClient.deleteDrawing(drawingId);
           savedDrawingIds.current.delete(drawingId);
-          console.log(`✓ Drawing ${drawingId} deleted from backend`);
         } catch (error) {
           console.error(`Error deleting drawing ${drawingId}:`, error);
         }

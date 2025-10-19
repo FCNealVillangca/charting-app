@@ -110,10 +110,6 @@ export function handleLineTool(params: ToolHandlerParams): void {
     (d) => d.metadata?.isIncomplete && d.type === "line"
   );
 
-  console.log("LINE CLICK:", {
-    incompleteDrawing,
-    allDrawings: drawings,
-  });
 
   if (!incompleteDrawing) {
     // First click - create line with first point
@@ -140,13 +136,11 @@ export function handleLineTool(params: ToolHandlerParams): void {
       metadata: { isIncomplete: true, maxPoints: 2 },
     };
 
-    console.log("CREATING LINE:", newDrawing);
     addDrawing(newDrawing);
     // Auto-select the newly created drawing
     setSelectedDrawingId(newDrawing.id);
   } else {
     // Add point to incomplete drawing
-    console.log("ADDING POINT TO LINE:", incompleteDrawing.id);
     const seriesId = incompleteDrawing.series[0].id;
     addPointToDrawing(incompleteDrawing.id, seriesId, {
       x: xValue,
@@ -158,7 +152,6 @@ export function handleLineTool(params: ToolHandlerParams): void {
     const maxPoints = incompleteDrawing.metadata?.maxPoints || 2;
 
     if (currentPoints >= maxPoints) {
-      console.log("COMPLETING LINE:", incompleteDrawing.id);
       completeDrawing(incompleteDrawing.id);
       // Keep the drawing selected after completion
       setSelectedDrawingId(incompleteDrawing.id);

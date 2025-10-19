@@ -94,7 +94,6 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   }, [drawings]);
 
   const resetZoom = useCallback(() => {
-    console.log("Reset zoom clicked");
     chartRef.current?.resetZoom();
   }, []);
 

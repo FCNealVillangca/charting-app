@@ -20,7 +20,6 @@ export function checkIfAtChartStart(
   // Check if we're viewing index 0 (leftmost data)
   const isAtStart = extremes.min <= tolerancePoints;
   if (isAtStart) {
-    console.log(`🎯 At chart start! (min: ${extremes.min} <= ${tolerancePoints})`);
   }
   return isAtStart;
 }
@@ -32,13 +31,10 @@ export function maybeLogChartStart(xAxis: Highcharts.Axis, onReachStart?: () => 
   if (checkIfAtChartStart(xAxis)) {
     const now = Date.now();
     if (now - lastEndAlertTime > 3000) { // 3 second debounce
-      console.log("🎯 Index 0 is visible - triggering callback!");
       lastEndAlertTime = now;
       if (onReachStart) {
-        console.log("🚀 Calling onReachStart callback");
         onReachStart();
       } else {
-        console.log("❌ No onReachStart callback provided");
       }
     }
   }
