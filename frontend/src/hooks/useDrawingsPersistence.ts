@@ -20,6 +20,8 @@ export function useDrawingsPersistence({
   // Track which drawings have been saved to avoid duplicate saves
   const savedDrawingIds = useRef<Set<string>>(new Set());
   const isInitialLoad = useRef(true);
+  // Track last saved state to detect updates
+  const lastSavedState = useRef<Map<string, string>>(new Map());
 
   // Load drawings on mount
   useEffect(() => {
@@ -36,38 +38,58 @@ export function useDrawingsPersistence({
     };
 
     loadDrawings().then((savedDrawings) => {
-      // Mark all loaded drawings as saved
+      // Mark all loaded drawings as saved and track their state
       savedDrawings.forEach((drawing) => {
         savedDrawingIds.current.add(drawing.id);
+        lastSavedState.current.set(drawing.id, JSON.stringify(drawing));
       });
       isInitialLoad.current = false;
     });
   }, [pair, enabled]);
 
-  // Auto-save completed drawings
+  // Auto-save completed drawings and update modified drawings
   useEffect(() => {
     if (!enabled || !pair || isInitialLoad.current) return;
 
-    const saveCompletedDrawings = async () => {
+    const saveDrawings = async () => {
       for (const drawing of drawings) {
-        // Check if drawing is complete and not yet saved
         const isComplete = !drawing.metadata?.isIncomplete;
-        const notSaved = !savedDrawingIds.current.has(drawing.id);
+        if (!isComplete) continue; // Skip incomplete drawings
+        
+        const drawingJson = JSON.stringify(drawing);
+        const lastSaved = lastSavedState.current.get(drawing.id);
+        const hasChanged = lastSaved !== drawingJson;
+        const isSaved = savedDrawingIds.current.has(drawing.id);
 
-        if (isComplete && notSaved) {
+        // Save if: (new complete drawing) OR (existing drawing that changed)
+        if (hasChanged && (isSaved || !isSaved)) {
           try {
-            await apiClient.createDrawing({
-              id: drawing.id,
-              name: drawing.name,
-              type: drawing.type,
-              color: drawing.color,
-              series: drawing.series,
-              metadata: drawing.metadata,
-              pair: pair.toUpperCase(),
-            });
-
-            // Mark as saved
-            savedDrawingIds.current.add(drawing.id);
+            if (isSaved) {
+              // Update existing drawing
+              await apiClient.updateDrawing(drawing.id, {
+                name: drawing.name,
+                type: drawing.type,
+                color: drawing.color,
+                series: drawing.series,
+                metadata: drawing.metadata,
+                pair: pair.toUpperCase(),
+              });
+            } else {
+              // Create new drawing
+              await apiClient.createDrawing({
+                id: drawing.id,
+                name: drawing.name,
+                type: drawing.type,
+                color: drawing.color,
+                series: drawing.series,
+                metadata: drawing.metadata,
+                pair: pair.toUpperCase(),
+              });
+              savedDrawingIds.current.add(drawing.id);
+            }
+            
+            // Update last saved state
+            lastSavedState.current.set(drawing.id, drawingJson);
           } catch (error) {
             console.error(`Error saving drawing ${drawing.id}:`, error);
           }
@@ -75,7 +97,7 @@ export function useDrawingsPersistence({
       }
     };
 
-    saveCompletedDrawings();
+    saveDrawings();
   }, [drawings, pair, enabled]);
 
   // Auto-delete from backend when deleted locally
@@ -94,6 +116,7 @@ export function useDrawingsPersistence({
         try {
           await apiClient.deleteDrawing(drawingId);
           savedDrawingIds.current.delete(drawingId);
+          lastSavedState.current.delete(drawingId);
         } catch (error) {
           console.error(`Error deleting drawing ${drawingId}:`, error);
         }

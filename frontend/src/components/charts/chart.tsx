@@ -127,13 +127,13 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           type: "candlestick",
           backgroundColor: "transparent",
           animation: false,
-          zoomType: selectedData ? false : "x", // Disable zoom when data is selected
+          zoomType: undefined, // Zoom disabled by default, managed dynamically
           panning: {
-            enabled: activeTool === "none", // Disable panning when drawing tools are active
-            type: "x", // Enable panning on x-axis only (time)
+            enabled: false, // Panning managed dynamically
+            type: "x",
           },
-          panKey: "shift", // Hold Shift key to pan instead of zoom
-          resetZoomButton: null, // Completely remove the reset zoom button
+          panKey: "shift",
+          resetZoomButton: null,
         },
 
         title: {
@@ -316,10 +316,18 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       }
     }, [highchartsData]);
 
+
     // Update drawing series when drawings change
     useEffect(() => {
       if (chartInstance.current && highchartsData.length > 0) {
         const chart = chartInstance.current;
+        const xAxis = chart.xAxis[0];
+        const yAxis = chart.yAxis[0];
+        
+        // 🔒 SAVE current axis extremes BEFORE updating series
+        const xExtremes = xAxis.getExtremes();
+        const yExtremes = yAxis.getExtremes();
+        
         const drawingSeries = renderDrawingSeries(drawings, chartData.length, yAxisRange.min, yAxisRange.max);
         
         // Remove old drawing series (keep only candlestick at index 0)
@@ -332,7 +340,11 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           chart.addSeries(series, false);
         });
         
-        // Redraw once after all series updates
+        // 🔒 RESTORE axis extremes AFTER updating series (prevents auto-scale)
+        xAxis.setExtremes(xExtremes.min, xExtremes.max, false, false);
+        yAxis.setExtremes(yExtremes.min, yExtremes.max, false, false);
+        
+        // Redraw once after all updates
         chart.redraw(false);
       }
     }, [drawings, chartData.length, yAxisRange]);
@@ -388,7 +400,8 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         });
         chartElement.addEventListener("mousemove", handleMouseMove);
         chartElement.addEventListener("mouseleave", handleMouseLeave);
-        chartElement.addEventListener("mousedown", handleMouseDown);
+        // Use capture phase to intercept mousedown BEFORE Highcharts zoom
+        chartElement.addEventListener("mousedown", handleMouseDown, true);
         chartElement.addEventListener("mouseup", handleMouseUp);
       }
 
@@ -399,7 +412,8 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           chartElement.removeEventListener("wheel", handleWheel);
           chartElement.removeEventListener("mousemove", handleMouseMove);
           chartElement.removeEventListener("mouseleave", handleMouseLeave);
-          chartElement.removeEventListener("mousedown", handleMouseDown);
+          // Remove with capture: true to match how it was added
+          chartElement.removeEventListener("mousedown", handleMouseDown, true);
           chartElement.removeEventListener("mouseup", handleMouseUp);
         }
       };

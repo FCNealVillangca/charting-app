@@ -219,6 +219,17 @@ export function createHandleMouseDown(
     const xValue = xAxis.toValue(x);
     const yValue = yAxis.toValue(y);
 
+    // Check if clicking on a draggable point (for "none" tool mode)
+    const clickedPoint = findPoints(xValue, yValue);
+    
+    // ALWAYS prevent default zoom behavior when:
+    // 1. Clicking on a draggable point (to drag it)
+    // 2. Using any drawing tool
+    if (clickedPoint || activeTool !== "none") {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     // Prepare common parameters for tool handlers
     const toolHandlerParams = {
       xValue,
@@ -235,7 +246,6 @@ export function createHandleMouseDown(
     };
 
     if (activeTool === "none" || activeTool === null) {
-      e.preventDefault(); // Prevent zoom selection
       handleNoneTool(toolHandlerParams);
     } else if (
       activeTool === "dot" ||
@@ -244,16 +254,12 @@ export function createHandleMouseDown(
       activeTool === "circle" ||
       activeTool === "diamond"
     ) {
-      e.preventDefault(); // Prevent zoom
       handleShapeTool({ ...toolHandlerParams, toolType: activeTool });
     } else if (activeTool === "line") {
-      e.preventDefault(); // Prevent zoom
       handleLineTool(toolHandlerParams);
     } else if (activeTool === "channel") {
-      e.preventDefault(); // Prevent zoom
       handleChannelTool(toolHandlerParams);
     } else if (activeTool === "hline") {
-      e.preventDefault(); // Prevent zoom
       handleHLineTool(toolHandlerParams);
     }
   };
