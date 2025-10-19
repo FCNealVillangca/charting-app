@@ -54,8 +54,8 @@ async def get_candles(
             # Only provide next URL if we got a full page (might be more data)
             next_url = f"{base_url}?cursor={next_cursor}&limit={limit}&direction=next"
         
-        if prev_cursor and cursor is not None:
-            # Only provide previous URL if we're not at the beginning
+        if prev_cursor:
+            # Provide previous URL if we have a previous cursor (there's older data available)
             prev_url = f"{base_url}?cursor={prev_cursor}&limit={limit}&direction=prev"
         
         return PaginatedCandleResponse(

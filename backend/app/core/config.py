@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     CSV_FILE_PATH: Path = Path(__file__).parent.parent / "EURUSD_15m_1year.csv"
     
     # Pagination defaults
-    DEFAULT_PAGE_LIMIT: int = 1000
+    DEFAULT_PAGE_LIMIT: int = 500
     MAX_PAGE_LIMIT: int = 5000
     
     class Config:

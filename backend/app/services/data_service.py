@@ -85,8 +85,8 @@ class DataService:
                 # Take the first 'limit' rows
                 df = df.head(limit)
         else:
-            # No cursor provided, get the first 'limit' rows
-            df = df.head(limit)
+            # No cursor provided, get the last 'limit' rows (most recent data)
+            df = df.tail(limit)
         
         # Convert to list of CandleData
         candles = [

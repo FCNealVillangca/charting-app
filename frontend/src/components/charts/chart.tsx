@@ -37,10 +37,16 @@ interface ChartProps {
   width?: number;
   height?: number;
   onChartCreated?: (chart: HTMLDivElement) => void;
+  onReachStart?: () => void;
 }
 
 const Chart = forwardRef<BaseChartRef, ChartProps>(
-  ({ data, onChartCreated }, ref) => {
+  ({ data, onChartCreated, onReachStart }, ref) => {
+    // console.log("🎨 Chart component rendered with:", { 
+    //   dataLength: data.length, 
+    //   hasOnReachStart: !!onReachStart,
+    //   onReachStartType: typeof onReachStart
+    // });
     const chartRef = useRef<HTMLDivElement | null>(null);
     const chartInstance = useRef<Highcharts.Chart | null>(null);
     const {
@@ -79,18 +85,24 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           if (!seen.has(item.time)) seen.set(item.time, item);
         }
       }
-      return Array.from(seen.values()).sort((a, b) => a.time - b.time);
+      const result = Array.from(seen.values()).sort((a, b) => a.time - b.time);
+      if (data.length !== result.length) {
+        console.log(`📊 Chart received ${data.length} data points, processed to ${result.length} unique candles`);
+      }
+      return result;
     }, [data]);
 
     const highchartsData = useMemo(() => {
       if (chartData.length === 0) return [];
-      return chartData.map((d, index) => [
+      const result = chartData.map((d, index) => [
         index, // Use index instead of time to avoid gaps
         d.open,
         d.high,
         d.low,
         d.close,
       ]);
+      // console.log(`📈 Highcharts data: ${result.length} points, first: [${result[0]?.join(', ')}], last: [${result[result.length-1]?.join(', ')}]`);
+      return result;
     }, [chartData]);
 
     // Calculate y-axis range for line extension
@@ -151,9 +163,9 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           minRange: 100, // Minimum zoom range (100 data points)
           events: {
             afterSetExtremes: function () {
-              // Log when index 0 becomes visible
+              // Log when index 0 becomes visible and trigger callback
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              maybeLogChartStart(this as any);
+              maybeLogChartStart(this as any, onReachStart);
             },
           },
           crosshair: {
@@ -291,7 +303,8 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         selectedData,
         activeTool,
         findPoints,
-        setTooltipData
+        setTooltipData,
+        onReachStart
       );
       const handleMouseLeave = createHandleMouseLeave(setTooltipData);
       const handleMouseUp = createHandleMouseUp(
@@ -313,8 +326,8 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         completeDrawing,
         updateDrawing
       );
-      const handleKeyDown = createHandleKeyDown(chartInstance);
-      const handleWheel = createHandleWheel(chartInstance);
+      const handleKeyDown = createHandleKeyDown(chartInstance, onReachStart);
+      const handleWheel = createHandleWheel(chartInstance, onReachStart);
 
       window.addEventListener("resize", handleResize);
       window.addEventListener("keydown", handleKeyDown);

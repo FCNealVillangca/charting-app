@@ -17,6 +17,7 @@ function Pairs() {
   const [prevUrl, setPrevUrl] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isAutoFetching, setIsAutoFetching] = useState(false);
   
   // Get chart context for drawings
   const { drawings, addDrawing } = useChart();
@@ -53,9 +54,15 @@ function Pairs() {
       try {
         setLoading(true);
         const response = await apiClient.getCandles(currentPair, {
-          limit: 2000, // Load last 2000 candles initially
+          limit: 500, // Load first 500 candles initially
         });
 
+        console.log("📊 Initial data fetch response:", {
+          resultsLength: response.results.length,
+          next: response.next,
+          previous: response.previous,
+          count: response.count
+        });
         setData(response.results);
         setNextUrl(response.next);
         setPrevUrl(response.previous);
@@ -98,15 +105,65 @@ function Pairs() {
     }
   }, [nextUrl, prevUrl, isLoadingMore]);
 
+  // Auto-fetch when reaching the start of the chart
+  const handleReachStart = useCallback(async () => {
+    console.log("🔥 handleReachStart called!");
+    console.log("📋 State check:", { prevUrl: !!prevUrl, isAutoFetching, isLoadingMore });
+    
+    if (!prevUrl) {
+      console.log("❌ No prevUrl available");
+      return;
+    }
+    if (isAutoFetching) {
+      console.log("❌ Already auto-fetching");
+      return;
+    }
+    if (isLoadingMore) {
+      console.log("❌ Already loading more");
+      return;
+    }
+
+    try {
+      console.log("🔄 Setting isAutoFetching to true");
+      setIsAutoFetching(true);
+      console.log("🔄 Auto-fetching more historical data from:", prevUrl);
+      const response = await apiClient.fetchFromURL(prevUrl);
+      
+      console.log(`📊 API Response:`, { 
+        resultsLength: response.results.length, 
+        next: response.next, 
+        previous: response.previous,
+        firstCandle: response.results[0],
+        lastCandle: response.results[response.results.length - 1]
+      });
+      
+      // Prepend old data
+      setData(prev => {
+        const newData = [...response.results, ...prev];
+        console.log(`📈 Data update: ${prev.length} -> ${newData.length} candles`);
+        console.log(`📈 First 3 new candles:`, newData.slice(0, 3));
+        return newData;
+      });
+      setPrevUrl(response.previous);
+      console.log("✅ Data updated successfully");
+    } catch (err) {
+      console.error("❌ Error auto-fetching data:", err);
+    } finally {
+      console.log("🔄 Setting isAutoFetching to false");
+      setIsAutoFetching(false);
+    }
+  }, [prevUrl, isAutoFetching, isLoadingMore]);
+
   // Memoize chart data transformation to prevent unnecessary re-renders
   const chartData = useMemo((): DataPoint[] => {
-    return data.map((d) => ({
+    const result = data.map((d) => ({
       time: d.time, // Already Unix timestamp in seconds from API
       open: d.open,
       high: d.high,
       low: d.low,
       close: d.close,
     }));
+    return result;
   }, [data]);
 
   if (loading) {
@@ -155,6 +212,7 @@ function Pairs() {
           <span>
             Loaded {data.length.toLocaleString()} of {totalCount.toLocaleString()} candles
             {isLoadingMore && <span className="ml-2 text-blue-600">Loading...</span>}
+            {isAutoFetching && <span className="ml-2 text-green-600">Auto-fetching...</span>}
           </span>
           <span className="text-gray-400">|</span>
           <span className="flex items-center gap-1">
@@ -187,7 +245,7 @@ function Pairs() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <Chart data={chartData} />
+        <Chart data={chartData} onReachStart={handleReachStart} />
       </div>
     </div>
   );

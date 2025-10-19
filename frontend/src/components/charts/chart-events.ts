@@ -13,21 +13,33 @@ export function checkIfAtChartStart(
   tolerancePoints: number = 5
 ): boolean {
   const extremes = xAxis.getExtremes();
-  if (typeof extremes.min !== "number") return false;
+  if (typeof extremes.min !== "number") {
+    return false;
+  }
   
   // Check if we're viewing index 0 (leftmost data)
-  return extremes.min <= tolerancePoints;
+  const isAtStart = extremes.min <= tolerancePoints;
+  if (isAtStart) {
+    console.log(`🎯 At chart start! (min: ${extremes.min} <= ${tolerancePoints})`);
+  }
+  return isAtStart;
 }
 
 /**
- * Console log when index 0 is visible (debounced)
+ * Console log when index 0 is visible (debounced) and trigger callback
  */
-export function maybeLogChartStart(xAxis: Highcharts.Axis) {
+export function maybeLogChartStart(xAxis: Highcharts.Axis, onReachStart?: () => void) {
   if (checkIfAtChartStart(xAxis)) {
     const now = Date.now();
     if (now - lastEndAlertTime > 3000) { // 3 second debounce
-      console.log("🎯 Index 0 is visible");
+      console.log("🎯 Index 0 is visible - triggering callback!");
       lastEndAlertTime = now;
+      if (onReachStart) {
+        console.log("🚀 Calling onReachStart callback");
+        onReachStart();
+      } else {
+        console.log("❌ No onReachStart callback provided");
+      }
     }
   }
 }
@@ -51,7 +63,8 @@ export function createHandleMouseMove(
     x: number;
     y: number;
     data: DataPoint | null;
-  }) => void
+  }) => void,
+  onReachStart?: () => void
 ) {
   return (e: MouseEvent) => {
     if (!chartInstance.current) return;
@@ -59,6 +72,9 @@ export function createHandleMouseMove(
     const chart = chartInstance.current;
     const xAxis = chart.xAxis[0];
     const yAxis = chart.yAxis[0];
+
+    // Check if we've reached the start and trigger callback
+    maybeLogChartStart(xAxis, onReachStart);
 
     // Get mouse position relative to chart
     const rect = chart.container.getBoundingClientRect();
@@ -251,7 +267,8 @@ export function createHandleMouseDown(
  * Handles keyboard input for chart navigation
  */
 export function createHandleKeyDown(
-  chartInstance: { current: Highcharts.Chart | null }
+  chartInstance: { current: Highcharts.Chart | null },
+  onReachStart?: () => void
 ) {
   return (e: KeyboardEvent) => {
     if (!chartInstance.current) return;
@@ -264,6 +281,8 @@ export function createHandleKeyDown(
       case "ArrowLeft":
         e.preventDefault();
         xAxis.setExtremes(extremes.min - panStep, extremes.max - panStep);
+        // Check if we've reached the start after panning
+        setTimeout(() => maybeLogChartStart(xAxis, onReachStart), 0);
         break;
       case "ArrowRight":
         e.preventDefault();
@@ -282,7 +301,8 @@ export function createHandleKeyDown(
  * Handles mouse wheel for panning when Shift is held
  */
 export function createHandleWheel(
-  chartInstance: { current: Highcharts.Chart | null }
+  chartInstance: { current: Highcharts.Chart | null },
+  onReachStart?: () => void
 ) {
   return (e: WheelEvent) => {
     if (!chartInstance.current) return;
@@ -299,6 +319,9 @@ export function createHandleWheel(
       const panAmount = e.deltaY > 0 ? panStep : -panStep;
 
       xAxis.setExtremes(extremes.min + panAmount, extremes.max + panAmount);
+      
+      // Check if we've reached the start after panning
+      setTimeout(() => maybeLogChartStart(xAxis, onReachStart), 0);
     }
   };
 }
