@@ -10,6 +10,16 @@
 - Keep components focused and single-purpose
 - Use local state for component-specific data
 - Only use context for truly global state that multiple components need
+- **Dialog/Modal state should live in the dialog component itself** (e.g., `chart-timeframe-dialog.tsx` has its own open/close state)
+
+## State Management Rules
+- **NEVER add redundant state** - if data can be derived or computed, derive it
+- **NEVER duplicate state** - if state exists elsewhere, use it directly or pass it down
+- Before adding ANY new state, ask: "Can this be derived from existing state or props?"
+- Prefer derived values using `useMemo` over creating new state variables
+- If you find yourself syncing state between variables, you're doing it wrong - remove the duplicate
+- **Challenge every state addition** - most of the time you don't need it
+- **UI state (modals, dropdowns, tooltips) belongs in the UI component** - don't lift it up unless another component needs to control it
 
 ## Styling Rules
 - **ALWAYS use Tailwind CSS classes** instead of inline styles

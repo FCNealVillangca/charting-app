@@ -6,29 +6,27 @@ import { handleNoneTool, handleShapeTool, handleLineTool, handleChannelTool, han
 let lastEndAlertTime = 0;
 
 /**
- * Check if the x-axis view is at (or near) the rightmost end of data
+ * Check if index 0 (leftmost/oldest data) is visible in the chart view
  */
-export function checkIfAtChartEnd(
+export function checkIfAtChartStart(
   xAxis: Highcharts.Axis,
-  dataLength: number,
-  tolerancePoints: number = 1
+  tolerancePoints: number = 5
 ): boolean {
   const extremes = xAxis.getExtremes();
-  if (typeof extremes.max !== "number") return false;
+  if (typeof extremes.min !== "number") return false;
   
-  // Since we use index-based x-axis (0 to dataLength-1), check if we're near the end
-  const rightmostIndex = dataLength - 1;
-  return extremes.max >= rightmostIndex - tolerancePoints;
+  // Check if we're viewing index 0 (leftmost data)
+  return extremes.min <= tolerancePoints;
 }
 
 /**
- * Alert when at end of chart (debounced)
+ * Console log when index 0 is visible (debounced)
  */
-export function maybeAlertAtChartEnd(xAxis: Highcharts.Axis, dataLength: number, tolerancePoints: number = 1) {
-  if (checkIfAtChartEnd(xAxis, dataLength, tolerancePoints)) {
+export function maybeLogChartStart(xAxis: Highcharts.Axis) {
+  if (checkIfAtChartStart(xAxis)) {
     const now = Date.now();
-    if (now - lastEndAlertTime > 1000) {
-      alert("Reached end of chart");
+    if (now - lastEndAlertTime > 3000) { // 3 second debounce
+      console.log("🎯 Index 0 is visible");
       lastEndAlertTime = now;
     }
   }
@@ -253,8 +251,7 @@ export function createHandleMouseDown(
  * Handles keyboard input for chart navigation
  */
 export function createHandleKeyDown(
-  chartInstance: { current: Highcharts.Chart | null },
-  dataLength: number
+  chartInstance: { current: Highcharts.Chart | null }
 ) {
   return (e: KeyboardEvent) => {
     if (!chartInstance.current) return;
@@ -271,8 +268,6 @@ export function createHandleKeyDown(
       case "ArrowRight":
         e.preventDefault();
         xAxis.setExtremes(extremes.min + panStep, extremes.max + panStep);
-        // Check for end after panning right
-        maybeAlertAtChartEnd(xAxis, dataLength);
         break;
       case "Home":
         e.preventDefault();
@@ -287,8 +282,7 @@ export function createHandleKeyDown(
  * Handles mouse wheel for panning when Shift is held
  */
 export function createHandleWheel(
-  chartInstance: { current: Highcharts.Chart | null },
-  dataLength: number
+  chartInstance: { current: Highcharts.Chart | null }
 ) {
   return (e: WheelEvent) => {
     if (!chartInstance.current) return;
@@ -305,8 +299,6 @@ export function createHandleWheel(
       const panAmount = e.deltaY > 0 ? panStep : -panStep;
 
       xAxis.setExtremes(extremes.min + panAmount, extremes.max + panAmount);
-      // Check for end after wheel pan
-      maybeAlertAtChartEnd(xAxis, dataLength);
     }
   };
 }
