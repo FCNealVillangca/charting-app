@@ -2,6 +2,38 @@ import Highcharts from "highcharts";
 import type { DataPoint, Drawing } from "./chart-types";
 import { handleNoneTool, handleShapeTool, handleLineTool, handleChannelTool, handleHLineTool } from "./chart-tools";
 
+// Simple debounce to avoid multiple alerts in quick succession
+let lastEndAlertTime = 0;
+
+/**
+ * Check if the x-axis view is at (or near) the rightmost end of data
+ */
+export function checkIfAtChartEnd(
+  xAxis: Highcharts.Axis,
+  dataLength: number,
+  tolerancePoints: number = 1
+): boolean {
+  const extremes = xAxis.getExtremes();
+  if (typeof extremes.max !== "number") return false;
+  
+  // Since we use index-based x-axis (0 to dataLength-1), check if we're near the end
+  const rightmostIndex = dataLength - 1;
+  return extremes.max >= rightmostIndex - tolerancePoints;
+}
+
+/**
+ * Alert when at end of chart (debounced)
+ */
+export function maybeAlertAtChartEnd(xAxis: Highcharts.Axis, dataLength: number, tolerancePoints: number = 1) {
+  if (checkIfAtChartEnd(xAxis, dataLength, tolerancePoints)) {
+    const now = Date.now();
+    if (now - lastEndAlertTime > 1000) {
+      alert("Reached end of chart");
+      lastEndAlertTime = now;
+    }
+  }
+}
+
 /**
  * Handles mouse movement for tooltip display and cursor management
  */
@@ -221,7 +253,8 @@ export function createHandleMouseDown(
  * Handles keyboard input for chart navigation
  */
 export function createHandleKeyDown(
-  chartInstance: { current: Highcharts.Chart | null }
+  chartInstance: { current: Highcharts.Chart | null },
+  dataLength: number
 ) {
   return (e: KeyboardEvent) => {
     if (!chartInstance.current) return;
@@ -238,6 +271,8 @@ export function createHandleKeyDown(
       case "ArrowRight":
         e.preventDefault();
         xAxis.setExtremes(extremes.min + panStep, extremes.max + panStep);
+        // Check for end after panning right
+        maybeAlertAtChartEnd(xAxis, dataLength);
         break;
       case "Home":
         e.preventDefault();
@@ -252,7 +287,8 @@ export function createHandleKeyDown(
  * Handles mouse wheel for panning when Shift is held
  */
 export function createHandleWheel(
-  chartInstance: { current: Highcharts.Chart | null }
+  chartInstance: { current: Highcharts.Chart | null },
+  dataLength: number
 ) {
   return (e: WheelEvent) => {
     if (!chartInstance.current) return;
@@ -269,6 +305,8 @@ export function createHandleWheel(
       const panAmount = e.deltaY > 0 ? panStep : -panStep;
 
       xAxis.setExtremes(extremes.min + panAmount, extremes.max + panAmount);
+      // Check for end after wheel pan
+      maybeAlertAtChartEnd(xAxis, dataLength);
     }
   };
 }

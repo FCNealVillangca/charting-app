@@ -22,6 +22,7 @@ import {
   createHandleMouseDown,
   createHandleKeyDown,
   createHandleWheel,
+  maybeAlertAtChartEnd,
 } from "./chart-events";
 
 // Exposed imperative API
@@ -148,6 +149,15 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           gridLineWidth: 1,
           gridLineColor: "#e0e0e0",
           minRange: 100, // Minimum zoom range (100 data points)
+          events: {
+            // Fire on pan/zoom updates across all interaction methods
+            afterSetExtremes: function () {
+              // 'this' is the xAxis instance
+              // Check if we are at end of chart and alert (debounced)
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              maybeAlertAtChartEnd(this as any, chartData.length);
+            },
+          },
           crosshair: {
             enabled: true,
             color: "#666",
@@ -305,8 +315,8 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         completeDrawing,
         updateDrawing
       );
-      const handleKeyDown = createHandleKeyDown(chartInstance);
-      const handleWheel = createHandleWheel(chartInstance);
+      const handleKeyDown = createHandleKeyDown(chartInstance, chartData.length);
+      const handleWheel = createHandleWheel(chartInstance, chartData.length);
 
       window.addEventListener("resize", handleResize);
       window.addEventListener("keydown", handleKeyDown);

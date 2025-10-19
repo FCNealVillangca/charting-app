@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams } from "react-router";
-import NavigationBar from "../../components/NavigationBar";
+import ChartNavbar from "../../components/charts/chart-navbar";
 import Chart from "../../components/charts/chart";
 import { apiClient, type CandleData } from "../../lib/api-client";
 import type { DataPoint } from "../../components/charts/chart-types";
@@ -144,7 +144,7 @@ function Pairs() {
 
   return (
     <div className="flex flex-col h-screen w-full">
-      <NavigationBar
+      <ChartNavbar
         currentPair={currentPair}
         onPairChange={handlePairChange}
       />
