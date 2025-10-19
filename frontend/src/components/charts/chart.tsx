@@ -44,6 +44,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
   ({ data, onChartCreated, onReachStart }, ref) => {
     const chartRef = useRef<HTMLDivElement | null>(null);
     const chartInstance = useRef<Highcharts.Chart | null>(null);
+    const prevDataLengthRef = useRef<number>(0);
     const {
       drawings,
       addDrawing,
@@ -258,16 +259,13 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       clearSeries: clearDrawings,
     }));
 
+    // Create chart only once on mount
     useEffect(() => {
       const chartElement = chartRef.current;
-      if (chartElement && highchartsData.length > 0) {
-        // Destroy existing chart if it exists
-        if (chartInstance.current) {
-          chartInstance.current.destroy();
-        }
-
+      if (chartElement && highchartsData.length > 0 && !chartInstance.current) {
         // Create new chart
         chartInstance.current = Highcharts.chart(chartElement, options);
+        prevDataLengthRef.current = highchartsData.length;
 
         if (onChartCreated) {
           onChartCreated(chartElement);
@@ -280,7 +278,64 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           chartInstance.current = null;
         }
       };
-    }, [highchartsData, options, onChartCreated]);
+    }, [onChartCreated]);
+
+    // Update candlestick data when highchartsData changes (without recreating chart)
+    useEffect(() => {
+      if (chartInstance.current && highchartsData.length > 0) {
+        const chart = chartInstance.current;
+        const candlestickSeries = chart.series[0];
+        
+        if (candlestickSeries) {
+          // Save current extremes before updating data
+          const xAxis = chart.xAxis[0];
+          const extremes = xAxis.getExtremes();
+          const wasZoomed = extremes.min !== extremes.dataMin || extremes.max !== extremes.dataMax;
+          
+          // Calculate data length change
+          const currentDataLength = highchartsData.length;
+          const prevDataLength = prevDataLengthRef.current;
+          const dataLengthChange = currentDataLength - prevDataLength;
+          
+          // Update the series data without animation to prevent flicker
+          candlestickSeries.setData(highchartsData, false, false, false);
+          
+          // If user was zoomed/panned and data length changed, adjust extremes
+          if (wasZoomed && dataLengthChange !== 0) {
+            const adjustedMin = extremes.min + dataLengthChange;
+            const adjustedMax = extremes.max + dataLengthChange;
+            xAxis.setExtremes(adjustedMin, adjustedMax, false, false);
+          }
+          
+          // Update previous data length
+          prevDataLengthRef.current = currentDataLength;
+          
+          // Redraw chart once after all updates
+          chart.redraw(false);
+        }
+      }
+    }, [highchartsData]);
+
+    // Update drawing series when drawings change
+    useEffect(() => {
+      if (chartInstance.current && highchartsData.length > 0) {
+        const chart = chartInstance.current;
+        const drawingSeries = renderDrawingSeries(drawings, chartData.length, yAxisRange.min, yAxisRange.max);
+        
+        // Remove old drawing series (keep only candlestick at index 0)
+        while (chart.series.length > 1) {
+          chart.series[chart.series.length - 1].remove(false);
+        }
+        
+        // Add new drawing series
+        drawingSeries.forEach(series => {
+          chart.addSeries(series, false);
+        });
+        
+        // Redraw once after all series updates
+        chart.redraw(false);
+      }
+    }, [drawings, chartData.length, yAxisRange]);
 
     useEffect(() => {
       const handleResize = () => {
