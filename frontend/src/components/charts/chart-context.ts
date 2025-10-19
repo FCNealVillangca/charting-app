@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import type { ChartContextType, Drawing, BaseChartRef } from "./chart-types";
 import {
   updatePointInDrawings,
-  findPointInDrawings,
+  findLineOrPoint,
   addPointToDrawing,
   removePointFromDrawing,
   deleteDrawingById,
@@ -90,7 +90,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const findPoints = useCallback((x: number, y: number, xTolerance: number = 10, yTolerance: number = 10): { drawingId: string; seriesId: string; pointId: string } | null => {
-    return findPointInDrawings(drawings, x, y, xTolerance, yTolerance);
+    return findLineOrPoint(drawings, x, y, xTolerance, yTolerance);
   }, [drawings]);
 
   const resetZoom = useCallback(() => {

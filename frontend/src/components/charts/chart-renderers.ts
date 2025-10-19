@@ -195,31 +195,17 @@ export function renderDrawingSeries(
           if (s.points.length >= 1) {
             const yValue = s.points[0].y;
             
-            return [
-              // Extended horizontal line
-              {
-                name: drawing.name,
-                data: [[0, yValue], [chartDataLength - 1, yValue]],
-                type: "line" as const,
-                color,
-                lineColor: color,
-                marker: { enabled: false },
-                lineWidth: 2,
-                showInLegend: false,
-                enableMouseTracking: false,
-              } as Highcharts.SeriesLineOptions,
-              // Single control point in the middle for dragging
-              {
-                name: `${drawing.name} - control`,
-                data: [[(chartDataLength - 1) / 2, yValue]],
-                type: "scatter" as const,
-                color,
-                marker: createMarker(color, 4, "circle"),
-                lineWidth: 0,
-                showInLegend: false,
-                enableMouseTracking: true,
-              } as Highcharts.SeriesScatterOptions,
-            ] as any;
+            return {
+              name: drawing.name,
+              data: [[0, yValue], [chartDataLength - 1, yValue]],
+              type: "line" as const,
+              color,
+              lineColor: color,
+              marker: { enabled: false },
+              lineWidth: 2,
+              showInLegend: false,
+              enableMouseTracking: false,
+            } as Highcharts.SeriesLineOptions;
           } else {
             return [];
           }

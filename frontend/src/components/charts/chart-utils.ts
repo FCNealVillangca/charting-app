@@ -92,6 +92,57 @@ export const findPointInDrawings = (
 };
 
 /**
+ * Enhanced finder - checks Y-axis first for lines, then checks both axes for points
+ */
+export const findLineOrPoint = (
+  drawings: Drawing[],
+  x: number,
+  y: number,
+  xTolerance: number = 10,
+  yTolerance: number = 10
+): { drawingId: string; seriesId: string; pointId: string } | null => {
+  
+  // 1. Check Y-axis: Are there any series (of any type) near this Y value?
+  let closestOnYAxis: { drawingId: string; seriesId: string; pointId: string; distance: number; isLine: boolean } | null = null;
+  
+  for (const d of drawings) {
+    for (const s of d.series) {
+      // Check if ANY point in this series is near the Y value
+      for (const p of s.points) {
+        const distanceY = Math.abs(p.y - y);
+        
+        if (distanceY < 15) { // Within Y tolerance
+          // Determine if this series represents a line (horizontal line has only 1 point, but type is hline)
+          const isLine = d.type === 'hline' || s.points.length >= 2;
+          
+          if (!closestOnYAxis || distanceY < closestOnYAxis.distance || (distanceY === closestOnYAxis.distance && isLine && !closestOnYAxis.isLine)) {
+            closestOnYAxis = {
+              drawingId: d.id,
+              seriesId: s.id,
+              pointId: p.id,
+              distance: distanceY,
+              isLine: isLine
+            };
+          }
+        }
+      }
+    }
+  }
+  
+  // If we found something on Y-axis AND it's a line, return it
+  if (closestOnYAxis && closestOnYAxis.isLine) {
+    return { 
+      drawingId: closestOnYAxis.drawingId, 
+      seriesId: closestOnYAxis.seriesId, 
+      pointId: closestOnYAxis.pointId 
+    };
+  }
+  
+  // 2. Otherwise, check both X and Y axes for points (standard point detection)
+  return findPointInDrawings(drawings, x, y, xTolerance, yTolerance);
+};
+
+/**
  * Adds a point to an existing drawing
  */
 export const addPointToDrawing = (
