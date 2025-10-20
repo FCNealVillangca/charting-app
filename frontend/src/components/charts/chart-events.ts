@@ -46,14 +46,14 @@ export function maybeLogChartStart(xAxis: Highcharts.Axis, onReachStart?: () => 
 export function createHandleMouseMove(
   chartInstance: { current: Highcharts.Chart | null },
   chartData: DataPoint[],
-  selectedData: { drawingId: string; seriesId: string; pointId: string } | null,
+  selectedData: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null,
   activeTool: string,
   findPoints: (
     x: number,
     y: number,
     xTolerance?: number,
     yTolerance?: number
-  ) => { drawingId: string; seriesId: string; pointId: string } | null,
+  ) => { drawingId: number | null; seriesId: number | null; pointId: number | null } | null,
   setTooltipData: (data: {
     visible: boolean;
     x: number;
@@ -135,16 +135,16 @@ export function createHandleMouseLeave(
  */
 export function createHandleMouseUp(
   chartInstance: { current: Highcharts.Chart | null },
-  selectedData: { drawingId: string; seriesId: string; pointId: string } | null,
+  selectedData: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null,
   updatePoint: (
-    drawingId: string,
-    seriesId: string,
-    pointId: string,
+    drawingId: number | null,
+    seriesId: number | null,
+    pointId: number | null,
     x: number,
     y: number
   ) => void,
   setSelectedData: (
-    point: { drawingId: string; seriesId: string; pointId: string } | null
+    point: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null
   ) => void
 ) {
   return (e: MouseEvent) => {
@@ -183,25 +183,25 @@ export function createHandleMouseDown(
   chartInstance: { current: Highcharts.Chart | null },
   activeTool: string,
   drawings: Drawing[],
-  selectedData: { drawingId: string; seriesId: string; pointId: string } | null,
+  selectedData: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null,
   findPoints: (
     x: number,
     y: number,
     xTolerance?: number,
     yTolerance?: number
-  ) => { drawingId: string; seriesId: string; pointId: string } | null,
+  ) => { drawingId: number | null; seriesId: number | null; pointId: number | null } | null,
   setSelectedData: (
-    point: { drawingId: string; seriesId: string; pointId: string } | null
+    point: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null
   ) => void,
-  setSelectedDrawingId: (drawingId: string | null) => void,
+  setSelectedDrawingId: (drawingId: number | null) => void,
   addDrawing: (drawing: Drawing) => void,
   addPointToDrawing: (
-    drawingId: string,
-    seriesId: string,
+    drawingId: number | null,
+    seriesId: number | null,
     point: { x: number; y: number }
   ) => void,
-  completeDrawing: (drawingId: string) => void,
-  updateDrawing: (drawingId: string, updates: Partial<Drawing>) => void
+  completeDrawing: (drawingId: number | null) => void,
+  updateDrawing: (drawingId: number | null, updates: Partial<Drawing>) => void
 ) {
   return (e: MouseEvent) => {
     if (!chartInstance.current) return;

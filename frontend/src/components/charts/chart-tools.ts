@@ -8,25 +8,25 @@ export interface ToolHandlerParams {
   xValue: number;
   yValue: number;
   drawings: Drawing[];
-  selectedData: { drawingId: string; seriesId: string; pointId: string } | null;
+  selectedData: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null;
   findPoints: (
     x: number,
     y: number,
     xTolerance?: number,
     yTolerance?: number
-  ) => { drawingId: string; seriesId: string; pointId: string } | null;
+  ) => { drawingId: number | null; seriesId: number | null; pointId: number | null } | null;
   setSelectedData: (
-    point: { drawingId: string; seriesId: string; pointId: string } | null
+    point: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null
   ) => void;
-  setSelectedDrawingId: (drawingId: string | null) => void;
+  setSelectedDrawingId: (drawingId: number | null) => void;
   addDrawing: (drawing: Drawing) => void;
   addPointToDrawing: (
-    drawingId: string,
-    seriesId: string,
+    drawingId: number | null,
+    seriesId: number | null,
     point: { x: number; y: number }
   ) => void;
-  completeDrawing: (drawingId: string) => void;
-  updateDrawing?: (drawingId: string, updates: Partial<Drawing>) => void;
+  completeDrawing: (drawingId: number | null) => void;
+  updateDrawing?: (drawingId: number | null, updates: Partial<Drawing>) => void;
 }
 
 /**

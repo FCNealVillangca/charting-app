@@ -1,4 +1,5 @@
 from typing import Optional
+import logging
 from sqlalchemy.orm import Session, joinedload
 from app.database.session import SessionLocal
 from app.models.drawing import Drawing as DrawingModel
@@ -6,6 +7,9 @@ from app.models.series import Series as SeriesModel
 from app.models.point import Point as PointModel
 from app.models.pair import Pair as PairModel
 from app.schemas.drawing import Drawing, DrawingCreate, DrawingUpdate
+
+
+logger = logging.getLogger(__name__)
 
 
 class DrawingService:
@@ -33,13 +37,17 @@ class DrawingService:
     
     def _drawing_model_to_schema(self, drawing_model: DrawingModel) -> Drawing:
         """Convert SQLAlchemy Drawing model to Pydantic schema"""
+        logger.debug(f"Converting drawing model id={drawing_model.id} to schema")
+        logger.debug(f"Drawing has {len(drawing_model.series)} series")
+        
         # Build series list with points
         series_list = []
         for series_model in sorted(drawing_model.series, key=lambda s: s.order_index):
+            logger.debug(f"Processing series id={series_model.id} with {len(series_model.points)} points")
             points_list = []
             for point_model in sorted(series_model.points, key=lambda p: p.order_index):
                 points_list.append({
-                    "id": f"point-{point_model.id}",
+                    "id": point_model.id,  # Use integer ID, not string
                     "x": point_model.x,
                     "y": point_model.y
                 })
@@ -48,6 +56,8 @@ class DrawingService:
                 "id": series_model.id,
                 "points": points_list
             })
+        
+        logger.debug(f"Pair symbol: {drawing_model.pair.symbol}")
         
         return Drawing(
             id=drawing_model.id,
@@ -61,6 +71,7 @@ class DrawingService:
     
     def get_all_drawings(self, pair: Optional[str] = None) -> list[Drawing]:
         """Get all drawings, optionally filtered by trading pair"""
+        logger.info(f"get_all_drawings called with pair={pair}")
         db = self._get_db()
         try:
             query = db.query(DrawingModel).options(
@@ -69,10 +80,20 @@ class DrawingService:
             )
             
             if pair:
+                logger.info(f"Filtering by pair: {pair.upper()}")
                 query = query.join(PairModel).filter(PairModel.symbol == pair.upper())
             
             drawing_models = query.all()
-            return [self._drawing_model_to_schema(d) for d in drawing_models]
+            logger.info(f"Found {len(drawing_models)} drawings in database")
+            
+            result = [self._drawing_model_to_schema(d) for d in drawing_models]
+            logger.info(f"Successfully converted {len(result)} drawings to schema")
+            return result
+        except Exception as e:
+            logger.error(f"Error in get_all_drawings: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            raise
         finally:
             db.close()
     
@@ -93,20 +114,20 @@ class DrawingService:
             db.close()
     
     def create_drawing(self, drawing: DrawingCreate) -> Drawing:
-        """Create a new drawing"""
+        """Create a new drawing with auto-generated IDs"""
+        logger.info(f"create_drawing called for pair={drawing.pair}, type={drawing.type}")
+        logger.info(f"Drawing has {len(drawing.series)} series")
+        
         db = self._get_db()
         try:
-            # Check if drawing with this ID already exists
-            existing = db.query(DrawingModel).filter(DrawingModel.id == drawing.id).first()
-            if existing:
-                raise ValueError(f"Drawing with id {drawing.id} already exists")
-            
             # Get or create pair
+            logger.info(f"Getting or creating pair: {drawing.pair}")
             pair = self._get_or_create_pair(db, drawing.pair)
+            logger.info(f"Pair id={pair.id}, symbol={pair.symbol}")
             
-            # Create drawing
+            # Create drawing (ID will be auto-generated)
+            logger.info("Creating drawing model...")
             drawing_model = DrawingModel(
-                id=drawing.id,
                 name=drawing.name,
                 type=drawing.type,
                 color=drawing.color,
@@ -114,20 +135,23 @@ class DrawingService:
                 pair_id=pair.id
             )
             db.add(drawing_model)
-            db.flush()  # Flush to get the drawing in the session
+            db.flush()  # Flush to get auto-generated ID
+            logger.info(f"Drawing model created with id={drawing_model.id}")
             
             # Create series and points
             for series_idx, series_data in enumerate(drawing.series):
+                logger.info(f"Creating series {series_idx} with {len(series_data.points)} points")
                 series_model = SeriesModel(
-                    id=series_data.id,
                     drawing_id=drawing_model.id,
                     order_index=series_idx
                 )
                 db.add(series_model)
-                db.flush()
+                db.flush()  # Flush to get auto-generated ID
+                logger.info(f"Series created with id={series_model.id}")
                 
                 # Create points
                 for point_idx, point_data in enumerate(series_data.points):
+                    logger.debug(f"Creating point {point_idx}: x={point_data.x}, y={point_data.y}")
                     point_model = PointModel(
                         series_id=series_model.id,
                         x=point_data.x,
@@ -136,11 +160,18 @@ class DrawingService:
                     )
                     db.add(point_model)
             
+            logger.info("Committing transaction...")
             db.commit()
             db.refresh(drawing_model)
+            logger.info(f"Drawing created successfully with id={drawing_model.id}")
             
-            return self._drawing_model_to_schema(drawing_model)
+            result = self._drawing_model_to_schema(drawing_model)
+            logger.info(f"Returning drawing schema")
+            return result
         except Exception as e:
+            logger.error(f"Error creating drawing: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
             db.rollback()
             raise e
         finally:
@@ -168,15 +199,14 @@ class DrawingService:
                 db.query(SeriesModel).filter(SeriesModel.drawing_id == drawing_id).delete()
                 db.flush()
                 
-                # Create new series and points
+                # Create new series and points (IDs will be auto-generated)
                 for series_idx, series_data in enumerate(updates.series):
                     series_model = SeriesModel(
-                        id=series_data.id,
                         drawing_id=drawing_model.id,
                         order_index=series_idx
                     )
                     db.add(series_model)
-                    db.flush()
+                    db.flush()  # Flush to get auto-generated ID
                     
                     for point_idx, point_data in enumerate(series_data.points):
                         point_model = PointModel(

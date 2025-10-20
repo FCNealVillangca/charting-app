@@ -27,9 +27,9 @@ export function getRandomChartColor(): string {
  */
 export const updatePointInDrawings = (
   drawings: Drawing[],
-  drawingId: string,
-  seriesId: string,
-  pointId: string,
+  drawingId: number | null,
+  seriesId: number | null,
+  pointId: number | null,
   x: number,
   y: number
 ): Drawing[] => {
@@ -61,9 +61,9 @@ export const findPointInDrawings = (
   y: number,
   xTolerance: number = 10,
   yTolerance: number = 10
-): { drawingId: string; seriesId: string; pointId: string } | null => {
+): { drawingId: number | null; seriesId: number | null; pointId: number | null } | null => {
   // Find the closest point instead of just the first match
-  let closestPoint: { drawingId: string; seriesId: string; pointId: string; distance: number } | null = null;
+  let closestPoint: { drawingId: number | null; seriesId: number | null; pointId: number | null; distance: number } | null = null;
   
   for (const d of drawings) {
     for (const s of d.series) {
@@ -100,10 +100,10 @@ export const findLineOrPoint = (
   y: number,
   xTolerance: number = 10,
   yTolerance: number = 10
-): { drawingId: string; seriesId: string; pointId: string } | null => {
+): { drawingId: number | null; seriesId: number | null; pointId: number | null } | null => {
   
   // 1. Check Y-axis: Are there any series (of any type) near this Y value?
-  let closestOnYAxis: { drawingId: string; seriesId: string; pointId: string; distance: number; isLine: boolean } | null = null;
+  let closestOnYAxis: { drawingId: number | null; seriesId: number | null; pointId: number | null; distance: number; isLine: boolean } | null = null;
   
   for (const d of drawings) {
     for (const s of d.series) {
@@ -147,18 +147,17 @@ export const findLineOrPoint = (
  */
 export const addPointToDrawing = (
   drawings: Drawing[],
-  drawingId: string,
-  seriesId: string,
+  drawingId: number | null,
+  seriesId: number | null,
   point: { x: number; y: number }
 ): Drawing[] => {
-  const pointId = `point_${Date.now()}_${Math.random()}`;
   return drawings.map((d) =>
     d.id === drawingId
       ? {
           ...d,
           series: d.series.map((s) =>
             s.id === seriesId
-              ? { ...s, points: [...s.points, { id: pointId, ...point }] }
+              ? { ...s, points: [...s.points, { id: null, ...point }] }
               : s
           ),
         }
@@ -171,9 +170,9 @@ export const addPointToDrawing = (
  */
 export const removePointFromDrawing = (
   drawings: Drawing[],
-  drawingId: string,
-  seriesId: string,
-  pointId: string
+  drawingId: number | null,
+  seriesId: number | null,
+  pointId: number | null
 ): Drawing[] => {
   return drawings.map((d) =>
     d.id === drawingId
@@ -194,7 +193,7 @@ export const removePointFromDrawing = (
  */
 export const deleteDrawingById = (
   drawings: Drawing[],
-  drawingId: string
+  drawingId: number | null
 ): Drawing[] => {
   return drawings.filter((d) => d.id !== drawingId);
 };
@@ -204,7 +203,7 @@ export const deleteDrawingById = (
  */
 export const completeDrawingById = (
   drawings: Drawing[],
-  drawingId: string
+  drawingId: number | null
 ): Drawing[] => {
   return drawings.map((d) =>
     d.id === drawingId

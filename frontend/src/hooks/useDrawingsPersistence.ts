@@ -18,10 +18,10 @@ export function useDrawingsPersistence({
   enabled = true,
 }: UseDrawingsPersistenceOptions) {
   // Track which drawings have been saved to avoid duplicate saves
-  const savedDrawingIds = useRef<Set<string>>(new Set());
+  const savedDrawingIds = useRef<Set<number | null>>(new Set());
   const isInitialLoad = useRef(true);
   // Track last saved state to detect updates
-  const lastSavedState = useRef<Map<string, string>>(new Map());
+  const lastSavedState = useRef<Map<number | null, string>>(new Map());
 
   // Load drawings on mount
   useEffect(() => {
@@ -68,11 +68,9 @@ export function useDrawingsPersistence({
               // Update existing drawing
               await apiClient.updateDrawing(drawing.id, {
                 name: drawing.name,
-                type: drawing.type,
                 color: drawing.color,
                 series: drawing.series,
                 metadata: drawing.metadata,
-                pair: pair.toUpperCase(),
               });
               // Update last saved state
               lastSavedState.current.set(drawing.id, drawingJson);

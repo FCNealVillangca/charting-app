@@ -5,7 +5,7 @@ interface DrawingEditorDialogProps {
   isOpen: boolean;
   onClose: () => void;
   drawing: Drawing | null;
-  onSave: (drawingId: string, updates: Partial<Drawing>) => void;
+  onSave: (drawingId: number | null, updates: Partial<Drawing>) => void;
 }
 
 const DrawingEditorDialog: React.FC<DrawingEditorDialogProps> = ({

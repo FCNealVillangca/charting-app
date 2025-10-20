@@ -1,10 +1,13 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
+import traceback
+import logging
 from app.schemas.drawing import Drawing, DrawingCreate, DrawingUpdate, DrawingsResponse
 from app.services.drawing_service import drawing_service
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=DrawingsResponse)
@@ -14,13 +17,17 @@ async def get_drawings(
     """
     Get all drawings, optionally filtered by trading pair.
     """
+    logger.info(f"GET /drawings/ called with pair={pair}")
     try:
         drawings = drawing_service.get_all_drawings(pair=pair)
+        logger.info(f"Successfully fetched {len(drawings)} drawings")
         return DrawingsResponse(
             drawings=drawings,
             count=len(drawings)
         )
     except Exception as e:
+        logger.error(f"ERROR fetching drawings: {str(e)}")
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error fetching drawings: {str(e)}")
 
 
@@ -42,12 +49,26 @@ async def create_drawing(drawing: DrawingCreate):
     """
     Create a new drawing.
     """
+    logger.info(f"POST /drawings/ called")
+    logger.info(f"Received drawing data: {drawing.model_dump()}")
+    logger.info(f"Drawing name: {drawing.name}, type: {drawing.type}, color: {drawing.color}, pair: {drawing.pair}")
+    logger.info(f"Number of series: {len(drawing.series)}")
+    for i, series in enumerate(drawing.series):
+        logger.info(f"Series {i}: id={series.id}, points count={len(series.points)}")
+        for j, point in enumerate(series.points):
+            logger.info(f"  Point {j}: id={point.id}, x={point.x}, y={point.y}")
+    
     try:
         created_drawing = drawing_service.create_drawing(drawing)
+        logger.info(f"Successfully created drawing with id={created_drawing.id}")
         return created_drawing
     except ValueError as e:
+        logger.error(f"ValueError creating drawing: {str(e)}")
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        logger.error(f"ERROR creating drawing: {str(e)}")
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error creating drawing: {str(e)}")
 
 

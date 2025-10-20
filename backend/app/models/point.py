@@ -7,7 +7,7 @@ class Point(Base):
     __tablename__ = "points"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    series_id = Column(String, ForeignKey("series.id", ondelete="CASCADE"), nullable=False, index=True)
+    series_id = Column(Integer, ForeignKey("series.id", ondelete="CASCADE"), nullable=False, index=True)
     x = Column(Float, nullable=False)
     y = Column(Float, nullable=False)
     order_index = Column(Integer, nullable=False, default=0)

@@ -29,7 +29,7 @@ const ChartNavbar: React.FC<ChartNavbarProps> = ({
     setIsPairDialogOpen(false);
   };
 
-  const handleDrawingSave = (drawingId: string, updates: any) => {
+  const handleDrawingSave = (drawingId: number | null, updates: any) => {
     if (updateDrawing) {
       updateDrawing(drawingId, updates);
     }

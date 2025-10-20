@@ -6,8 +6,8 @@ from app.database.base import Base
 class Series(Base):
     __tablename__ = "series"
 
-    id = Column(String, primary_key=True)  # UUID from frontend
-    drawing_id = Column(String, ForeignKey("drawings.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    drawing_id = Column(Integer, ForeignKey("drawings.id", ondelete="CASCADE"), nullable=False, index=True)
     order_index = Column(Integer, nullable=False, default=0)
 
     # Relationships

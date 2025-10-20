@@ -19,8 +19,8 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [drawings, setDrawings] = useState<Drawing[]>([]);
-  const [selectedData, setSelectedData] = useState<{ drawingId: string; seriesId: string; pointId: string } | null>(null);
-  const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+  const [selectedData, setSelectedData] = useState<{ drawingId: number | null; seriesId: number | null; pointId: number | null } | null>(null);
+  const [selectedDrawingId, setSelectedDrawingId] = useState<number | null>(null);
   const [activeTool, setActiveTool] = useState<string>("none");
   const chartRef = useRef<BaseChartRef>(null);
 
@@ -34,7 +34,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     setSelectedDrawingId(null);
   }, []);
 
-  const updatePoint = useCallback((drawingId: string, seriesId: string, pointId: string, x: number, y: number) => {
+  const updatePoint = useCallback((drawingId: number | null, seriesId: number | null, pointId: number | null, x: number, y: number) => {
     setDrawings((prev) => {
       // Find the drawing being updated
       const drawing = prev.find(d => d.id === drawingId);
@@ -89,7 +89,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     });
   }, []);
 
-  const findPoints = useCallback((x: number, y: number, xTolerance: number = 10, yTolerance: number = 10): { drawingId: string; seriesId: string; pointId: string } | null => {
+  const findPoints = useCallback((x: number, y: number, xTolerance: number = 10, yTolerance: number = 10): { drawingId: number | null; seriesId: number | null; pointId: number | null } | null => {
     return findLineOrPoint(drawings, x, y, xTolerance, yTolerance);
   }, [drawings]);
 
@@ -134,26 +134,26 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     return getIncompleteDrawing(drawings, activeTool);
   }, [drawings, activeTool]);
 
-  const completeDrawing = useCallback((drawingId: string) => {
+  const completeDrawing = useCallback((drawingId: number | null) => {
     setDrawings((prev) => completeDrawingById(prev, drawingId));
     setActiveTool("none"); // Auto-deselect tool when complete
   }, []);
 
-  const deleteDrawing = useCallback((drawingId: string) => {
+  const deleteDrawing = useCallback((drawingId: number | null) => {
     setDrawings((prev) => deleteDrawingById(prev, drawingId));
     setSelectedData(null);
     setSelectedDrawingId(null);
   }, []);
 
-  const addPointToDrawingCallback = useCallback((drawingId: string, seriesId: string, point: { x: number; y: number }) => {
+  const addPointToDrawingCallback = useCallback((drawingId: number | null, seriesId: number | null, point: { x: number; y: number }) => {
     setDrawings((prev) => addPointToDrawing(prev, drawingId, seriesId, point));
   }, []);
 
-  const removePoint = useCallback((drawingId: string, seriesId: string, pointId: string) => {
+  const removePoint = useCallback((drawingId: number | null, seriesId: number | null, pointId: number | null) => {
     setDrawings((prev) => removePointFromDrawing(prev, drawingId, seriesId, pointId));
   }, []);
 
-  const updateDrawing = useCallback((drawingId: string, updates: Partial<Drawing>) => {
+  const updateDrawing = useCallback((drawingId: number | null, updates: Partial<Drawing>) => {
     setDrawings((prev) => prev.map((drawing) => 
       drawing.id === drawingId ? { ...drawing, ...updates } : drawing
     ));
