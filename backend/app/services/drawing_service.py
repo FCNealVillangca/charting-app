@@ -195,27 +195,83 @@ class DrawingService:
             
             # Update series if provided
             if updates.series is not None:
-                # Delete existing series (cascade will delete points)
-                db.query(SeriesModel).filter(SeriesModel.drawing_id == drawing_id).delete()
-                db.flush()
-                
-                # Create new series and points (IDs will be auto-generated)
+                # Update existing series and points instead of deleting
                 for series_idx, series_data in enumerate(updates.series):
-                    series_model = SeriesModel(
-                        drawing_id=drawing_model.id,
-                        order_index=series_idx
-                    )
-                    db.add(series_model)
-                    db.flush()  # Flush to get auto-generated ID
-                    
-                    for point_idx, point_data in enumerate(series_data.points):
-                        point_model = PointModel(
-                            series_id=series_model.id,
-                            x=point_data.x,
-                            y=point_data.y,
-                            order_index=point_idx
+                    if series_data.id is not None:
+                        # Update existing series
+                        series_model = db.query(SeriesModel).filter(
+                            SeriesModel.id == series_data.id,
+                            SeriesModel.drawing_id == drawing_id
+                        ).first()
+                        
+                        if series_model:
+                            series_model.order_index = series_idx
+                            
+                            # Update existing points
+                            for point_idx, point_data in enumerate(series_data.points):
+                                if point_data.id is not None:
+                                    # Update existing point
+                                    point_model = db.query(PointModel).filter(
+                                        PointModel.id == point_data.id,
+                                        PointModel.series_id == series_model.id
+                                    ).first()
+                                    
+                                    if point_model:
+                                        point_model.x = point_data.x
+                                        point_model.y = point_data.y
+                                        point_model.order_index = point_idx
+                                    else:
+                                        # Point doesn't exist, create it
+                                        point_model = PointModel(
+                                            series_id=series_model.id,
+                                            x=point_data.x,
+                                            y=point_data.y,
+                                            order_index=point_idx
+                                        )
+                                        db.add(point_model)
+                                else:
+                                    # New point without ID, create it
+                                    point_model = PointModel(
+                                        series_id=series_model.id,
+                                        x=point_data.x,
+                                        y=point_data.y,
+                                        order_index=point_idx
+                                    )
+                                    db.add(point_model)
+                        else:
+                            # Series doesn't exist, create it
+                            series_model = SeriesModel(
+                                drawing_id=drawing_model.id,
+                                order_index=series_idx
+                            )
+                            db.add(series_model)
+                            db.flush()
+                            
+                            for point_idx, point_data in enumerate(series_data.points):
+                                point_model = PointModel(
+                                    series_id=series_model.id,
+                                    x=point_data.x,
+                                    y=point_data.y,
+                                    order_index=point_idx
+                                )
+                                db.add(point_model)
+                    else:
+                        # New series without ID, create it
+                        series_model = SeriesModel(
+                            drawing_id=drawing_model.id,
+                            order_index=series_idx
                         )
-                        db.add(point_model)
+                        db.add(series_model)
+                        db.flush()
+                        
+                        for point_idx, point_data in enumerate(series_data.points):
+                            point_model = PointModel(
+                                series_id=series_model.id,
+                                x=point_data.x,
+                                y=point_data.y,
+                                order_index=point_idx
+                            )
+                            db.add(point_model)
             
             db.commit()
             db.refresh(drawing_model)

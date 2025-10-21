@@ -58,6 +58,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       completeDrawing,
       addPointToDrawing,
       activeTool,
+      isLoading,
     } = useContext(ChartContext)!;
     const [tooltipData, setTooltipData] = useState<{
       visible: boolean;
@@ -483,14 +484,14 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
             display: none !important;
           }
         `}</style>
-        <div className="chart-container">
+        <div className="chart-container" style={{ cursor: isLoading ? 'wait' : 'default' }}>
           <Sidebar />
           <div className="chart-main">
             <div className="chart-content">
               <div style={{ position: "relative", width: "100%", height: "100%" }}>
                 <div
                   ref={chartRef}
-                  style={{ position: "relative", width: "100%", height: "100%" }}
+                  style={{ position: "relative", width: "100%", height: "100%", cursor: isLoading ? 'wait' : 'default' }}
                 />
                 {tooltipData.visible && tooltipData.data && (
                   <div

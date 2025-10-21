@@ -20,32 +20,17 @@ function Pairs() {
   const [isAutoFetching, setIsAutoFetching] = useState(false);
   
   // Get chart context for drawings
-  const { drawings, addDrawing } = useChart();
+  const { drawings, addDrawing, replaceDrawing, setIsLoading } = useChart();
   
-  // Auto-save drawings to backend
+  // Auto-save drawings to backend (also handles loading on mount)
   const { savedCount } = useDrawingsPersistence({
     pair: currentPair,
     drawings,
     enabled: true,
+    addDrawing,
+    replaceDrawing,
+    setIsLoading,
   });
-
-  // Load saved drawings on mount
-  useEffect(() => {
-    const loadDrawings = async () => {
-      try {
-        const response = await apiClient.getDrawings(currentPair);
-        
-        // Add each drawing to the chart
-        response.drawings.forEach((drawing) => {
-          addDrawing(drawing as any); // Cast needed due to slight type differences
-        });
-      } catch (err) {
-        console.error("Error loading drawings:", err);
-      }
-    };
-
-    loadDrawings();
-  }, [currentPair, addDrawing]);
 
   // Initial data fetch
   useEffect(() => {

@@ -22,6 +22,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   const [selectedData, setSelectedData] = useState<{ drawingId: number | null; seriesId: number | null; pointId: number | null } | null>(null);
   const [selectedDrawingId, setSelectedDrawingId] = useState<number | null>(null);
   const [activeTool, setActiveTool] = useState<string>("none");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const chartRef = useRef<BaseChartRef>(null);
 
   const addDrawing = useCallback((newDrawing: Drawing) => {
@@ -159,6 +160,19 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
     ));
   }, []);
 
+  const replaceDrawing = useCallback((oldDrawing: Drawing, newDrawing: Drawing) => {
+    setDrawings((prev) => {
+      // Find the exact drawing by object reference
+      const index = prev.indexOf(oldDrawing);
+      if (index === -1) return prev; // Not found, return unchanged
+      
+      // Replace only that specific drawing
+      const updated = [...prev];
+      updated[index] = newDrawing;
+      return updated;
+    });
+  }, []);
+
   return React.createElement(
     ChartContext.Provider,
     {
@@ -168,6 +182,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         clearDrawings,
         updatePoint,
         updateDrawing,
+        replaceDrawing,
         selectedData,
         setSelectedData,
         selectedDrawingId,
@@ -186,7 +201,9 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         toggleChannelMode,
         toggleHLineMode,
         getIncompleteDrawing: getIncompleteDrawingCallback,
-        completeDrawing
+        completeDrawing,
+        isLoading,
+        setIsLoading
       }
     },
     children

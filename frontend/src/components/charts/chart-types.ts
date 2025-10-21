@@ -33,6 +33,7 @@ export interface ChartContextType {
   clearDrawings: () => void;
   updatePoint: (drawingId: number | null, seriesId: number | null, pointId: number | null, x: number, y: number) => void;
   updateDrawing: (drawingId: number | null, updates: Partial<Drawing>) => void;
+  replaceDrawing: (oldDrawing: Drawing, newDrawing: Drawing) => void;
   selectedData: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null;
   setSelectedData: (point: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null) => void;
   selectedDrawingId: number | null;
@@ -52,5 +53,7 @@ export interface ChartContextType {
   toggleHLineMode: () => void;
   getIncompleteDrawing: () => Drawing | undefined;
   completeDrawing: (drawingId: number | null) => void;
+  isLoading: boolean;
+  setIsLoading: (loading: boolean) => void;
 }
 
