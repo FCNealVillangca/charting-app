@@ -237,68 +237,56 @@ export function handleChannelTool(params: ToolHandlerParams): void {
         ],
       };
       
-      // Update the drawing with parallel series
-      // Note: Points are now independent - no recalculation on edit
-      // Create a fresh copy of baseSeries to avoid reference issues
+      // Build dashed center line (between the two boundary lines)
+      const dashedStart = {
+        x: (baseSeries.points[0].x + parallelStart.x) / 2,
+        y: (baseSeries.points[0].y + parallelStart.y) / 2,
+      };
+      const dashedEnd = {
+        x: (baseSeries.points[1].x + parallelEnd.x) / 2,
+        y: (baseSeries.points[1].y + parallelEnd.y) / 2,
+      };
+
+      const dashedSeries = {
+        id: null,
+        points: [
+          { id: null, ...dashedStart },
+          { id: null, ...dashedEnd },
+        ],
+      };
+
+      // Single center point for vertical drag of the whole channel
+      const centerX = (baseSeries.points[0].x + baseSeries.points[1].x + parallelStart.x + parallelEnd.x) / 4;
+      const centerY = (baseSeries.points[0].y + baseSeries.points[1].y + parallelStart.y + parallelEnd.y) / 4;
+      const centerSeries = {
+        id: null,
+        points: [{ id: null, x: centerX, y: centerY }],
+      };
+
+      // Assign temporary local ids so renderer/updates can identify series
+      const baseId = baseSeries.id ?? 1;
+      const parallelId = 2;
+      const dashedId = 3;
+      const centerId = 4;
+
+      const finalSeries = [
+        { ...baseSeries, id: baseId, points: [...baseSeries.points] },
+        { ...parallelSeries, id: parallelId },
+        { ...dashedSeries, id: dashedId },
+        { ...centerSeries, id: centerId },
+      ];
+
       if (updateDrawing) {
-        // Calculate dashed line (midpoints between the two boundary lines)
-        const dashedStart = {
-          x: (baseSeries.points[0].x + parallelStart.x) / 2,
-          y: (baseSeries.points[0].y + parallelStart.y) / 2,
-        };
-        const dashedEnd = {
-          x: (baseSeries.points[1].x + parallelEnd.x) / 2,
-          y: (baseSeries.points[1].y + parallelEnd.y) / 2,
-        };
-        
-        // Create dashed line series
-        const dashedSeries = {
-          id: null,
-          points: [
-            {
-              id: null,
-              ...dashedStart,
-            },
-            {
-              id: null,
-              ...dashedEnd,
-            },
-          ],
-        };
-        
-        // Calculate center point (center of all 4 boundary points)
-        const centerX = (baseSeries.points[0].x + baseSeries.points[1].x + parallelStart.x + parallelEnd.x) / 4;
-        const centerY = (baseSeries.points[0].y + baseSeries.points[1].y + parallelStart.y + parallelEnd.y) / 4;
-        
-        // Create center point series (just ONE point in the middle)
-        const centerSeries = {
-          id: null,
-          points: [
-            {
-              id: null,
-              x: centerX,
-              y: centerY,
-            },
-          ],
-        };
-        
-        const finalSeries = [
-          { ...baseSeries, points: [...baseSeries.points] },
-          parallelSeries,
-          dashedSeries,
-          centerSeries
-        ];
-        
         updateDrawing(incompleteDrawing.id, {
           series: finalSeries,
           metadata: {
             isIncomplete: false,
-            dashedSeriesId, // Store the dashed line series ID
-            centerSeriesId, // Store this so we know which series is the center point
+            dashedSeriesId: dashedId,
+            centerSeriesId: centerId,
           },
         });
       }
-      
+
       completeDrawing(incompleteDrawing.id);
       setSelectedDrawingId(incompleteDrawing.id);
     }

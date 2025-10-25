@@ -301,18 +301,15 @@ export const extendLineToRange = (
   const m = (p2.y - p1.y) / (p2.x - p1.x);
   const b = p1.y - m * p1.x;
   
-  // Calculate y-values at the x boundaries
+  // Calculate y-values at the x boundaries without clamping.
+  // Returning unclamped values preserves the exact slope so the
+  // extended line passes through the original anchor points.
   const y1 = m * minX + b;
   const y2 = m * maxX + b;
   
-  // Only clamp if values are extreme (beyond the extended range)
-  // This prevents angle changes during normal vertical movement
-  const clampedY1 = Math.max(minY, Math.min(maxY, y1));
-  const clampedY2 = Math.max(minY, Math.min(maxY, y2));
-  
   return [
-    { x: minX, y: clampedY1 },
-    { x: maxX, y: clampedY2 }
+    { x: minX, y: y1 },
+    { x: maxX, y: y2 }
   ];
 };
 
