@@ -13,17 +13,14 @@ function Pairs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPair, setCurrentPair] = useState(pair || "EURUSD");
-  const [nextUrl, setNextUrl] = useState<string | null>(null);
   const [prevUrl, setPrevUrl] = useState<string | null>(null);
-  const [totalCount, setTotalCount] = useState<number>(0);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isAutoFetching, setIsAutoFetching] = useState(false);
   
   // Get chart context for drawings
   const { drawings, addDrawing, replaceDrawing, setIsLoading } = useChart();
   
   // Auto-save drawings to backend (also handles loading on mount)
-  const { savedCount } = useDrawingsPersistence({
+  useDrawingsPersistence({
     pair: currentPair,
     drawings,
     enabled: true,
@@ -42,9 +39,7 @@ function Pairs() {
         });
 
         setData(response.results);
-        setNextUrl(response.next);
         setPrevUrl(response.previous);
-        setTotalCount(response.count);
         setError(null);
       } catch (err) {
         console.error("Error fetching candle data:", err);
@@ -57,42 +52,9 @@ function Pairs() {
     fetchInitialData();
   }, [currentPair]);
 
-  // Load more data (for pagination)
-  const loadMoreData = useCallback(async (direction: 'next' | 'prev') => {
-    const url = direction === 'next' ? nextUrl : prevUrl;
-    if (!url || isLoadingMore) return;
-
-    try {
-      setIsLoadingMore(true);
-      const response = await apiClient.fetchFromURL(url);
-      
-      if (direction === 'next') {
-        // Append new data
-        setData(prev => [...prev, ...response.results]);
-      } else {
-        // Prepend old data
-        setData(prev => [...response.results, ...prev]);
-      }
-      
-      setNextUrl(response.next);
-      setPrevUrl(response.previous);
-    } catch (err) {
-      console.error("Error loading more data:", err);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [nextUrl, prevUrl, isLoadingMore]);
-
   // Auto-fetch when reaching the start of the chart
   const handleReachStart = useCallback(async () => {
-    
-    if (!prevUrl) {
-      return;
-    }
-    if (isAutoFetching) {
-      return;
-    }
-    if (isLoadingMore) {
+    if (!prevUrl || isAutoFetching) {
       return;
     }
 
@@ -100,19 +62,15 @@ function Pairs() {
       setIsAutoFetching(true);
       const response = await apiClient.fetchFromURL(prevUrl);
       
-      
       // Prepend old data
-      setData(prev => {
-        const newData = [...response.results, ...prev];
-        return newData;
-      });
+      setData(prev => [...response.results, ...prev]);
       setPrevUrl(response.previous);
     } catch (err) {
-      console.error("❌ Error auto-fetching data:", err);
+      console.error("Error auto-fetching data:", err);
     } finally {
       setIsAutoFetching(false);
     }
-  }, [prevUrl, isAutoFetching, isLoadingMore]);
+  }, [prevUrl, isAutoFetching]);
 
   // Memoize chart data transformation to prevent unnecessary re-renders
   const chartData = useMemo((): DataPoint[] => {
@@ -166,44 +124,6 @@ function Pairs() {
         onPairChange={handlePairChange}
       />
       
-      {/* Pagination Info */}
-      <div className="bg-gray-100 px-4 py-2 flex items-center justify-between border-b">
-        <div className="text-sm text-gray-600 flex items-center gap-4">
-          <span>
-            Loaded {data.length.toLocaleString()} of {totalCount.toLocaleString()} candles
-            {isLoadingMore && <span className="ml-2 text-blue-600">Loading...</span>}
-            {isAutoFetching && <span className="ml-2 text-green-600">Auto-fetching...</span>}
-          </span>
-          <span className="text-gray-400">|</span>
-          <span className="flex items-center gap-1">
-            <span className={drawings.length > 0 ? "text-green-600" : "text-gray-500"}>
-              {drawings.length} drawing{drawings.length !== 1 ? 's' : ''}
-            </span>
-            {savedCount > 0 && (
-              <span className="text-xs text-gray-500">
-                ({savedCount} saved)
-              </span>
-            )}
-          </span>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => loadMoreData('prev')}
-            disabled={!prevUrl || isLoadingMore}
-            className="px-3 py-1 text-sm bg-white border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            ← Load Older
-          </button>
-          <button
-            onClick={() => loadMoreData('next')}
-            disabled={!nextUrl || isLoadingMore}
-            className="px-3 py-1 text-sm bg-white border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Load Newer →
-          </button>
-        </div>
-      </div>
-
       <div className="flex-1 overflow-hidden">
         <Chart data={chartData} onReachStart={handleReachStart} />
       </div>
