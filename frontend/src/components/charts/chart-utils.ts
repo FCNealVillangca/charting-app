@@ -102,26 +102,23 @@ export const findLineOrPoint = (
   yTolerance: number = 10
 ): { drawingId: number | null; seriesId: number | null; pointId: number | null } | null => {
   
-  // 1. Check Y-axis: Are there any series (of any type) near this Y value?
-  let closestOnYAxis: { drawingId: number | null; seriesId: number | null; pointId: number | null; distance: number; isLine: boolean } | null = null;
+  // 1. Check Y-axis ONLY for horizontal lines (hline)
+  let closestHLineOnYAxis: { drawingId: number | null; seriesId: number | null; pointId: number | null; distance: number } | null = null;
   
   for (const d of drawings) {
     for (const s of d.series) {
       // Check if ANY point in this series is near the Y value
       for (const p of s.points) {
         const distanceY = Math.abs(p.y - y);
-        
-        if (distanceY < 15) { // Within Y tolerance
-          // Determine if this series represents a line (horizontal line has only 1 point, but type is hline)
-          const isLine = d.type === 'hline' || s.points.length >= 2;
-          
-          if (!closestOnYAxis || distanceY < closestOnYAxis.distance || (distanceY === closestOnYAxis.distance && isLine && !closestOnYAxis.isLine)) {
-            closestOnYAxis = {
+
+        // Only consider horizontal lines, and use provided yTolerance
+        if (d.type === 'hline' && distanceY < yTolerance) {
+          if (!closestHLineOnYAxis || distanceY < closestHLineOnYAxis.distance) {
+            closestHLineOnYAxis = {
               drawingId: d.id,
               seriesId: s.id,
               pointId: p.id,
-              distance: distanceY,
-              isLine: isLine
+              distance: distanceY
             };
           }
         }
@@ -129,12 +126,12 @@ export const findLineOrPoint = (
     }
   }
   
-  // If we found something on Y-axis AND it's a line, return it
-  if (closestOnYAxis && closestOnYAxis.isLine) {
+  // If we found a horizontal line on Y-axis, return it
+  if (closestHLineOnYAxis) {
     return { 
-      drawingId: closestOnYAxis.drawingId, 
-      seriesId: closestOnYAxis.seriesId, 
-      pointId: closestOnYAxis.pointId 
+      drawingId: closestHLineOnYAxis.drawingId, 
+      seriesId: closestHLineOnYAxis.seriesId, 
+      pointId: closestHLineOnYAxis.pointId 
     };
   }
   

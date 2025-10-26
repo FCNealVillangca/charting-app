@@ -95,9 +95,12 @@ export function createHandleMouseMove(
       // Currently dragging a point
       document.body.style.cursor = "grabbing";
     } else {
-      // Check if hovering over a point
+      // Check if hovering over a point using pixel-based tolerance converted to axis units
       const yValue = yAxis.toValue(y);
-      const hoveringPoint = findPoints(xValue, yValue);
+      const pixelTolerance = 6; // pixels
+      const xTol = Math.abs(xAxis.toValue(x + pixelTolerance) - xAxis.toValue(x));
+      const yTol = Math.abs(yAxis.toValue(y + pixelTolerance) - yAxis.toValue(y));
+      const hoveringPoint = findPoints(xValue, yValue, xTol, yTol);
       
       if (hoveringPoint) {
         // Hovering over a draggable point
@@ -219,8 +222,11 @@ export function createHandleMouseDown(
     const xValue = xAxis.toValue(x);
     const yValue = yAxis.toValue(y);
 
-    // Check if clicking on a draggable point (for "none" tool mode)
-    const clickedPoint = findPoints(xValue, yValue);
+    // Check if clicking on a draggable point (for "none" tool mode) using pixel-based tolerance
+    const pixelTolerance = 6; // pixels
+    const xTol = Math.abs(xAxis.toValue(x + pixelTolerance) - xAxis.toValue(x));
+    const yTol = Math.abs(yAxis.toValue(y + pixelTolerance) - yAxis.toValue(y));
+    const clickedPoint = findPoints(xValue, yValue, xTol, yTol);
     
     // ALWAYS prevent default zoom behavior when:
     // 1. Clicking on a draggable point (to drag it)
