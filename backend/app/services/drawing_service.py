@@ -15,6 +15,10 @@ logger = logging.getLogger(__name__)
 class DrawingService:
     """Service for managing drawings stored in SQLite database"""
     
+    # =============================================================================
+    # HELPER METHODS (PRIVATE)
+    # =============================================================================
+    
     def _get_db(self) -> Session:
         """Get database session"""
         return SessionLocal()
@@ -52,6 +56,83 @@ class DrawingService:
             metadata=drawing_model.drawing_metadata,
             pair=drawing_model.pair.symbol,
         )
+    
+    def _update_basic_drawing_fields(self, drawing_model: DrawingModel, updates: DrawingUpdate):
+        """Update basic drawing fields (name, color, metadata)"""
+        update_data = updates.model_dump(exclude_unset=True, exclude={"series"})
+        for field, value in update_data.items():
+            setattr(drawing_model, field, value)
+    
+    def _update_series_data(self, db: Session, drawing_model: DrawingModel, series_list: list):
+        """Update series and points for a drawing"""
+        for series_idx, series_data in enumerate(series_list):
+            if series_data.id is not None:
+                self._update_existing_series(db, drawing_model.id, series_data, series_idx)
+            else:
+                self._create_new_series(db, drawing_model.id, series_data, series_idx)
+    
+    def _update_existing_series(self, db: Session, drawing_id: int, series_data, series_idx: int):
+        """Update an existing series and its points"""
+        series_model = db.query(SeriesModel).filter(
+            SeriesModel.id == series_data.id,
+            SeriesModel.drawing_id == drawing_id
+        ).first()
+        
+        if series_model:
+            series_model.order_index = series_idx
+            self._update_points_for_series(db, series_model, series_data.points)
+        else:
+            # Series with this ID doesn't exist, create it
+            self._create_new_series(db, drawing_id, series_data, series_idx)
+    
+    def _create_new_series(self, db: Session, drawing_id: int, series_data, series_idx: int):
+        """Create a new series with its points"""
+        series_model = SeriesModel(
+            drawing_id=drawing_id,
+            order_index=series_idx
+        )
+        db.add(series_model)
+        db.flush()
+        
+        for point_idx, point_data in enumerate(series_data.points):
+            self._create_new_point(db, series_model.id, point_data, point_idx)
+    
+    def _update_points_for_series(self, db: Session, series_model: SeriesModel, points_data: list):
+        """Update points for an existing series"""
+        for point_idx, point_data in enumerate(points_data):
+            if point_data.id is not None:
+                self._update_existing_point(db, series_model.id, point_data, point_idx)
+            else:
+                self._create_new_point(db, series_model.id, point_data, point_idx)
+    
+    def _update_existing_point(self, db: Session, series_id: int, point_data, point_idx: int):
+        """Update an existing point"""
+        point_model = db.query(PointModel).filter(
+            PointModel.id == point_data.id,
+            PointModel.series_id == series_id
+        ).first()
+        
+        if point_model:
+            point_model.x = point_data.x
+            point_model.y = point_data.y
+            point_model.order_index = point_idx
+        else:
+            # Point with this ID doesn't exist, create it
+            self._create_new_point(db, series_id, point_data, point_idx)
+    
+    def _create_new_point(self, db: Session, series_id: int, point_data, point_idx: int):
+        """Create a new point"""
+        point_model = PointModel(
+            series_id=series_id,
+            x=point_data.x,
+            y=point_data.y,
+            order_index=point_idx
+        )
+        db.add(point_model)
+    
+    # =============================================================================
+    # PUBLIC METHODS
+    # =============================================================================
     
     def get_all_drawings(self, pair: Optional[str] = None) -> list[Drawing]:
         """Get all drawings, optionally filtered by trading pair"""
@@ -150,89 +231,11 @@ class DrawingService:
                 return None
             
             # Update basic fields
-            update_data = updates.model_dump(exclude_unset=True, exclude={"series"})
-            for field, value in update_data.items():
-                setattr(drawing_model, field, value)
+            self._update_basic_drawing_fields(drawing_model, updates)
             
             # Update series if provided
             if updates.series is not None:
-                # Update existing series and points instead of deleting
-                for series_idx, series_data in enumerate(updates.series):
-                    if series_data.id is not None:
-                        # Update existing series
-                        series_model = db.query(SeriesModel).filter(
-                            SeriesModel.id == series_data.id,
-                            SeriesModel.drawing_id == drawing_id
-                        ).first()
-                        
-                        if series_model:
-                            series_model.order_index = series_idx
-                            
-                            # Update existing points
-                            for point_idx, point_data in enumerate(series_data.points):
-                                if point_data.id is not None:
-                                    # Update existing point
-                                    point_model = db.query(PointModel).filter(
-                                        PointModel.id == point_data.id,
-                                        PointModel.series_id == series_model.id
-                                    ).first()
-                                    
-                                    if point_model:
-                                        point_model.x = point_data.x
-                                        point_model.y = point_data.y
-                                        point_model.order_index = point_idx
-                                    else:
-                                        # Point doesn't exist, create it
-                                        point_model = PointModel(
-                                            series_id=series_model.id,
-                                            x=point_data.x,
-                                            y=point_data.y,
-                                            order_index=point_idx
-                                        )
-                                        db.add(point_model)
-                                else:
-                                    # New point without ID, create it
-                                    point_model = PointModel(
-                                        series_id=series_model.id,
-                                        x=point_data.x,
-                                        y=point_data.y,
-                                        order_index=point_idx
-                                    )
-                                    db.add(point_model)
-                        else:
-                            # Series doesn't exist, create it
-                            series_model = SeriesModel(
-                                drawing_id=drawing_model.id,
-                                order_index=series_idx
-                            )
-                            db.add(series_model)
-                            db.flush()
-                            
-                            for point_idx, point_data in enumerate(series_data.points):
-                                point_model = PointModel(
-                                    series_id=series_model.id,
-                                    x=point_data.x,
-                                    y=point_data.y,
-                                    order_index=point_idx
-                                )
-                                db.add(point_model)
-                    else:
-                        # New series without ID, create it
-                        series_model = SeriesModel(
-                            drawing_id=drawing_model.id,
-                            order_index=series_idx
-                        )
-                        db.add(series_model)
-                        db.flush()
-                        
-                        for point_idx, point_data in enumerate(series_data.points):
-                            point_model = PointModel(
-                                series_id=series_model.id,
-                                x=point_data.x,
-                                y=point_data.y,
-                                order_index=point_idx
-                            )
-                            db.add(point_model)
+                self._update_series_data(db, drawing_model, updates.series)
             
             db.commit()
             db.refresh(drawing_model)
