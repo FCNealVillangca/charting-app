@@ -98,7 +98,11 @@ export function createHandleMouseMove(
       // Check if hovering over a point using pixel-based tolerance converted to axis units
       const yValue = yAxis.toValue(y);
       const pixelTolerance = 6; // pixels
-      const xTol = Math.abs(xAxis.toValue(x + pixelTolerance) - xAxis.toValue(x));
+      // Clamp X tolerance in axis units to avoid selecting points far away horizontally when zoomed out
+      const xTol = Math.min(
+        Math.abs(xAxis.toValue(x + pixelTolerance) - xAxis.toValue(x)),
+        0.5
+      );
       const yTol = Math.abs(yAxis.toValue(y + pixelTolerance) - yAxis.toValue(y));
       const hoveringPoint = findPoints(xValue, yValue, xTol, yTol);
       
@@ -224,7 +228,11 @@ export function createHandleMouseDown(
 
     // Check if clicking on a draggable point (for "none" tool mode) using pixel-based tolerance
     const pixelTolerance = 6; // pixels
-    const xTol = Math.abs(xAxis.toValue(x + pixelTolerance) - xAxis.toValue(x));
+    // Clamp X tolerance in axis units to avoid selecting points far away horizontally when zoomed out
+    const xTol = Math.min(
+      Math.abs(xAxis.toValue(x + pixelTolerance) - xAxis.toValue(x)),
+      0.5
+    );
     const yTol = Math.abs(yAxis.toValue(y + pixelTolerance) - yAxis.toValue(y));
     const clickedPoint = findPoints(xValue, yValue, xTol, yTol);
     
@@ -237,12 +245,20 @@ export function createHandleMouseDown(
     }
 
     // Prepare common parameters for tool handlers
+    // Wrap hit-test to always use the pixel-derived tolerances so handlers don't fall back to wide defaults
+    const findWithTol = (
+      xx: number,
+      yy: number,
+      _xT?: number,
+      _yT?: number
+    ) => findPoints(xx, yy, xTol, yTol);
+
     const toolHandlerParams = {
       xValue,
       yValue,
       drawings,
       selectedData,
-      findPoints,
+      findPoints: findWithTol,
       setSelectedData,
       setSelectedDrawingId,
       addDrawing,

@@ -103,19 +103,20 @@ async def delete_drawing(drawing_id: int):
 
 @router.delete("/")
 async def delete_all_drawings(
-    pair: Optional[str] = Query(None, description="Delete only drawings for specific pair")
+    pair: str = Query(..., description="Trading pair to delete drawings for (e.g., EURUSD)")
 ):
     """
-    Delete all drawings, optionally filtered by trading pair.
+    Delete all drawings for a specific trading pair.
     """
     try:
         deleted_count = drawing_service.delete_all_drawings(pair=pair)
         
-        message = f"Deleted {deleted_count} drawing(s)"
-        if pair:
-            message += f" for pair {pair}"
-        
-        return {"message": message, "deleted_count": deleted_count}
+        return {
+            "message": f"Deleted {deleted_count} drawing(s) for pair {pair}",
+            "deleted_count": deleted_count
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting drawings: {str(e)}")
 
