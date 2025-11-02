@@ -1,12 +1,13 @@
-import type { Drawing } from "./chart-types";
+import type { Drawing, DataPoint } from "./chart-types";
 import {
   calculatePerpendicularDistance,
   calculateParallelLine,
 } from "./chart-utils";
 
 export interface ToolHandlerParams {
-  xValue: number;
+  timestamp: number;  // Changed: Now stores timestamp instead of index
   yValue: number;
+  chartData: DataPoint[];  // Added: Need chartData for timestamp operations
   drawings: Drawing[];
   selectedData: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null;
   findPoints: (
@@ -35,7 +36,7 @@ export interface ToolHandlerParams {
  */
 export function handleNoneTool(params: ToolHandlerParams): void {
   const {
-    xValue,
+    timestamp,  // Changed: Use timestamp instead of xValue
     yValue,
     selectedData,
     findPoints,
@@ -45,7 +46,7 @@ export function handleNoneTool(params: ToolHandlerParams): void {
 
   if (!selectedData) {
     // Find and select series at the point
-    const foundPoint = findPoints(xValue, yValue);
+    const foundPoint = findPoints(timestamp, yValue);  // Changed: Pass timestamp
     if (foundPoint) {
       setSelectedData(foundPoint);
       setSelectedDrawingId(foundPoint.drawingId);
@@ -63,7 +64,7 @@ export function handleNoneTool(params: ToolHandlerParams): void {
 export function handleShapeTool(
   params: ToolHandlerParams & { toolType: string }
 ): void {
-  const { xValue, yValue, drawings, addDrawing, setSelectedDrawingId, toolType } = params;
+  const { timestamp, yValue, drawings, addDrawing, setSelectedDrawingId, toolType } = params;  // Changed: Use timestamp
 
   const drawingNumber = drawings.length + 1;
   const newDrawing: Drawing = {
@@ -77,7 +78,7 @@ export function handleShapeTool(
         points: [
           {
             id: null,
-            x: xValue,
+            x: timestamp,  // Changed: Store timestamp in x
             y: yValue,
           },
         ],
@@ -96,7 +97,7 @@ export function handleShapeTool(
  */
 export function handleLineTool(params: ToolHandlerParams): void {
   const {
-    xValue,
+    timestamp,  // Changed: Use timestamp instead of xValue
     yValue,
     drawings,
     addDrawing,
@@ -125,7 +126,7 @@ export function handleLineTool(params: ToolHandlerParams): void {
           points: [
             {
               id: null,
-              x: xValue,
+              x: timestamp,  // Changed: Store timestamp in x
               y: yValue,
             },
           ],
@@ -141,7 +142,7 @@ export function handleLineTool(params: ToolHandlerParams): void {
     // Add point to incomplete drawing
     const seriesId = incompleteDrawing.series[0].id;
     addPointToDrawing(incompleteDrawing.id, seriesId, {
-      x: xValue,
+      x: timestamp,  // Changed: Store timestamp in x
       y: yValue,
     });
 
@@ -163,7 +164,7 @@ export function handleLineTool(params: ToolHandlerParams): void {
  */
 export function handleChannelTool(params: ToolHandlerParams): void {
   const {
-    xValue,
+    timestamp,  // Changed: Use timestamp instead of xValue
     yValue,
     drawings,
     addDrawing,
@@ -192,7 +193,7 @@ export function handleChannelTool(params: ToolHandlerParams): void {
           points: [
             {
               id: null,
-              x: xValue,
+              x: timestamp,  // Changed: Store timestamp in x
               y: yValue,
             },
           ],
@@ -210,13 +211,13 @@ export function handleChannelTool(params: ToolHandlerParams): void {
     if (currentPoints === 1) {
       // Second click - add second point to base line
       addPointToDrawing(incompleteDrawing.id, baseSeries.id, {
-        x: xValue,
+        x: timestamp,  // Changed: Store timestamp in x
         y: yValue,
       });
     } else if (currentPoints === 2) {
       // Third click - calculate parallel line and complete
       const [p1, p2] = baseSeries.points;
-      const offsetPoint = { x: xValue, y: yValue };
+      const offsetPoint = { x: timestamp, y: yValue };  // Changed: Use timestamp
       
       // Calculate perpendicular distance
       const distance = calculatePerpendicularDistance(p1, p2, offsetPoint);
@@ -303,6 +304,7 @@ export function handleChannelTool(params: ToolHandlerParams): void {
  */
 export function handleHLineTool(params: ToolHandlerParams): void {
   const {
+    timestamp,  // Changed: Get timestamp (though hline doesn't really use it)
     yValue,
     drawings,
     addDrawing,
@@ -323,7 +325,7 @@ export function handleHLineTool(params: ToolHandlerParams): void {
         points: [
           {
             id: null,
-            x: 0, // Will be extended across chart
+            x: timestamp, // Store timestamp (though hline extends across chart regardless)
             y: yValue,
           },
         ],

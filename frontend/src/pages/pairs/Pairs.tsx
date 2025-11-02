@@ -63,6 +63,7 @@ function Pairs() {
       const response = await apiClient.fetchFromURL(prevUrl);
       
       // Prepend old data
+      // No need to shift drawing coordinates anymore - they use timestamps!
       setData(prev => [...response.results, ...prev]);
       setPrevUrl(response.previous);
     } catch (err) {

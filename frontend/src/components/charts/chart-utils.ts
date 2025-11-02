@@ -1,4 +1,33 @@
-import type { Drawing } from "./chart-types";
+import type { Drawing, DataPoint } from "./chart-types";
+
+/**
+ * Convert timestamp to index in chart data
+ * Returns -1 if timestamp not found
+ */
+export function timestampToIndex(timestamp: number, chartData: DataPoint[]): number {
+  return chartData.findIndex(d => d.time === timestamp);
+}
+
+/**
+ * Convert index to timestamp
+ * Returns null if index out of bounds
+ */
+export function indexToTimestamp(index: number, chartData: DataPoint[]): number | null {
+  if (index < 0 || index >= chartData.length) return null;
+  return chartData[index].time;
+}
+
+/**
+ * Find nearest timestamp to a given index (rounded)
+ * Returns null if chartData is empty or index is way out of bounds
+ */
+export function indexToNearestTimestamp(index: number, chartData: DataPoint[]): number | null {
+  if (chartData.length === 0) return null;
+  
+  // Clamp index to valid range
+  const clampedIndex = Math.max(0, Math.min(chartData.length - 1, Math.round(index)));
+  return chartData[clampedIndex].time;
+}
 
 /**
  * Generate a random hex color

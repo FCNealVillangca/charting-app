@@ -1,6 +1,7 @@
 import Highcharts from "highcharts";
 import type { DataPoint, Drawing } from "./chart-types";
 import { handleNoneTool, handleShapeTool, handleLineTool, handleChannelTool, handleHLineTool } from "./chart-tools";
+import { indexToNearestTimestamp } from "./chart-utils";
 
 // Simple debounce to avoid multiple alerts in quick succession
 let lastEndAlertTime = 0;
@@ -142,6 +143,7 @@ export function createHandleMouseLeave(
  */
 export function createHandleMouseUp(
   chartInstance: { current: Highcharts.Chart | null },
+  chartData: DataPoint[],  // Added: Need chartData to convert index -> timestamp
   selectedData: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null,
   updatePoint: (
     drawingId: number | null,
@@ -166,16 +168,20 @@ export function createHandleMouseUp(
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Convert to axis values
+    // Convert to axis values (xValue is index)
     const xValue = xAxis.toValue(x);
     const yValue = yAxis.toValue(y);
+    
+    // Convert index to timestamp
+    const timestamp = indexToNearestTimestamp(xValue, chartData);
+    if (timestamp === null) return;
 
-    // Update the selected point position and deselect
+    // Update the selected point position and deselect (store timestamp in x)
     updatePoint(
       selectedData.drawingId,
       selectedData.seriesId,
       selectedData.pointId,
-      xValue,
+      timestamp,  // Store timestamp, not index
       yValue
     );
     setSelectedData(null);
@@ -188,6 +194,7 @@ export function createHandleMouseUp(
  */
 export function createHandleMouseDown(
   chartInstance: { current: Highcharts.Chart | null },
+  chartData: DataPoint[],  // Added: Need chartData to convert index -> timestamp
   activeTool: string,
   drawings: Drawing[],
   selectedData: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null,
@@ -222,9 +229,13 @@ export function createHandleMouseDown(
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Convert to axis values
+    // Convert to axis values (xValue is index)
     const xValue = xAxis.toValue(x);
     const yValue = yAxis.toValue(y);
+    
+    // Convert index to timestamp
+    const timestamp = indexToNearestTimestamp(xValue, chartData);
+    if (timestamp === null) return;
 
     // Check if clicking on a draggable point (for "none" tool mode) using pixel-based tolerance
     const pixelTolerance = 6; // pixels
@@ -254,8 +265,9 @@ export function createHandleMouseDown(
     ) => findPoints(xx, yy, xTol, yTol);
 
     const toolHandlerParams = {
-      xValue,
+      timestamp,  // Changed: Pass timestamp instead of xValue (index)
       yValue,
+      chartData,  // Added: Pass chartData for tools to use
       drawings,
       selectedData,
       findPoints: findWithTol,

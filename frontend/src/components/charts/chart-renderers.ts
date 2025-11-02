@@ -1,6 +1,6 @@
 import Highcharts from "highcharts";
-import type { Drawing } from "./chart-types";
-import { extendLineToRange } from "./chart-utils";
+import type { Drawing, DataPoint } from "./chart-types";
+import { extendLineToRange, timestampToIndex } from "./chart-utils";
 
 /**
  * Creates a marker configuration object
@@ -43,22 +43,31 @@ function createBaseSeriesOptions(
 /**
  * Renders drawings as Highcharts series
  * Handles different drawing types: lines, dots, and shapes
+ * NOTE: Drawings store timestamps in x, we convert to indices for rendering
  */
 export function renderDrawingSeries(
   drawings: Drawing[],
-  chartDataLength: number = 0,
+  chartData: DataPoint[],  // Changed: Need full chartData to convert timestamps
   yMin: number = -Infinity,
   yMax: number = Infinity
 ): Highcharts.SeriesOptionsType[] {
+  const chartDataLength = chartData.length;
+  
   return drawings.flatMap((drawing) =>
     drawing.series.flatMap((s, index) => {
-      const baseOptions = createBaseSeriesOptions(drawing, index, s.points);
+      // Convert timestamps (stored in x) to indices for rendering
+      const pointsWithIndices = s.points.map(p => ({
+        x: timestampToIndex(p.x, chartData),  // Convert timestamp -> index
+        y: p.y
+      })).filter(p => p.x !== -1);  // Filter out points not found in current data
+      
+      const baseOptions = createBaseSeriesOptions(drawing, index, pointsWithIndices);
       const color = (s as any)?.style?.color || "#000000"; // color per series
 
       switch (drawing.type) {
         case "line":
           // Complete line with 2+ points - render as line
-          if (s.points.length >= 2) {
+          if (pointsWithIndices.length >= 2) {
             return {
               ...baseOptions,
               type: "line" as const,
@@ -94,15 +103,15 @@ export function renderDrawingSeries(
             } as Highcharts.SeriesScatterOptions;
           }
           
-          if (isDashedLine && s.points.length >= 2) {
+          if (isDashedLine && pointsWithIndices.length >= 2) {
             // Only extend if channel is complete
             const isComplete = !drawing.isIncomplete;
-            let lineData = s.points.map((p) => [p.x, p.y]);
+            let lineData = pointsWithIndices.map((p) => [p.x, p.y]);
             
-            if (isComplete && chartDataLength > 0 && s.points.length >= 2) {
+            if (isComplete && chartDataLength > 0 && pointsWithIndices.length >= 2) {
               const [p1, p2] = extendLineToRange(
-                s.points[0],
-                s.points[1],
+                pointsWithIndices[0],
+                pointsWithIndices[1],
                 0,
                 chartDataLength - 1,
                 yMin,
@@ -125,7 +134,7 @@ export function renderDrawingSeries(
           }
           
           // Render boundary lines with extension
-          if (s.points.length >= 2) {
+          if (pointsWithIndices.length >= 2) {
             // Extend the line if it has 2 points, regardless of completion status
             // For incomplete channels, only extend the first series (base line)
             const isComplete = !drawing.isIncomplete;
@@ -136,8 +145,8 @@ export function renderDrawingSeries(
             if (shouldExtend) {
               // Extend line to chart boundaries
               const [p1, p2] = extendLineToRange(
-                s.points[0],
-                s.points[1],
+                pointsWithIndices[0],
+                pointsWithIndices[1],
                 0,
                 chartDataLength - 1,
                 yMin,

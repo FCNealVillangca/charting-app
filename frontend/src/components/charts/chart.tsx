@@ -198,7 +198,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
             colorByPoint: false,
             showInLegend: false,
           } as Highcharts.SeriesCandlestickOptions,
-          ...renderDrawingSeries(drawings, chartData.length, yAxisRange.min, yAxisRange.max),
+          ...renderDrawingSeries(drawings, chartData, yAxisRange.min, yAxisRange.max),
         ],
         plotOptions: {
           candlestick: {
@@ -339,7 +339,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         const xExtremes = xAxis.getExtremes();
         const yExtremes = yAxis.getExtremes();
         
-        const drawingSeries = renderDrawingSeries(drawings, chartData.length, yAxisRange.min, yAxisRange.max);
+        const drawingSeries = renderDrawingSeries(drawings, chartData, yAxisRange.min, yAxisRange.max);
         
         // Remove old drawing series (keep only candlestick at index 0)
         while (chart.series.length > 1) {
@@ -358,7 +358,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         // Redraw once after all updates
         chart.redraw(false);
       }
-    }, [drawings, chartData.length, yAxisRange]);
+    }, [drawings, chartData, yAxisRange]);
 
     useEffect(() => {
       const handleResize = () => {
@@ -380,12 +380,14 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       const handleMouseLeave = createHandleMouseLeave(setTooltipData);
       const handleMouseUp = createHandleMouseUp(
         chartInstance,
+        chartData,  // Added: Pass chartData for index->timestamp conversion
         selectedData,
         updatePoint,
         setSelectedData
       );
       const handleMouseDown = createHandleMouseDown(
         chartInstance,
+        chartData,  // Added: Pass chartData for index->timestamp conversion
         activeTool,
         drawings,
         selectedData,
