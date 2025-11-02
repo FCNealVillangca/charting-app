@@ -18,23 +18,22 @@ GET /api/v1/drawings/
 {
   "drawings": [
     {
-      "id": "drawing-123",
+      "id": 123,
       "name": "Support Line",
       "type": "line",
       "color": "#00ff00",
       "pair": "EURUSD",
       "series": [
         {
-          "id": "series-1",
+          "id": 1,
+          "name": "tline",
+          "style": { "lineWidth": 2 },
           "points": [
-            { "id": "point-1", "x": 100, "y": 1.0875 },
-            { "id": "point-2", "x": 200, "y": 1.0900 }
+            { "id": 10, "x": 100, "y": 1.0875 },
+            { "id": 11, "x": 200, "y": 1.0900 }
           ]
         }
-      ],
-      "metadata": {
-        "isIncomplete": false
-      }
+      ]
     }
   ],
   "count": 1
@@ -59,22 +58,21 @@ Content-Type: application/json
 **Request Body:**
 ```json
 {
-  "id": "drawing-456",
+  "id": 456,
   "name": "Resistance Line",
   "type": "hline",
   "color": "#ff0000",
   "pair": "EURUSD",
   "series": [
     {
-      "id": "series-1",
+      "id": 1,
+      "name": "hline",
+      "style": { "lineWidth": 2 },
       "points": [
-        { "id": "point-1", "x": 0, "y": 1.1000 }
+        { "id": 1, "x": 0, "y": 1.1000 }
       ]
     }
-  ],
-  "metadata": {
-    "description": "Strong resistance level"
-  }
+  ]
 }
 ```
 
@@ -92,8 +90,7 @@ Content-Type: application/json
 {
   "name": "Updated Support Line",
   "color": "#0000ff",
-  "series": [...],
-  "metadata": {...}
+  "series": [...]
 }
 ```
 
@@ -229,9 +226,14 @@ Supported drawing types (from your chart):
 
 ## Data Storage
 
-Drawings are stored in: `backend/app/data/drawings.json`
+Drawings are stored in the database (SQLite via SQLAlchemy).
 
 The file is automatically created on first use and persists between server restarts.
+
+## Notes
+
+- Per-series styling and meta live under `series.style` (e.g., roles for channels: `base`, `parallel`, `dashed`, `center`).
+- `drawing.metadata` is deprecated and ignored on write; legacy rows may still contain it and are mapped to series.style at read time for backward compatibility.
 
 ## Future Enhancements
 

@@ -20,7 +20,7 @@ const SidebarChannelButton: React.FC = () => {
         </svg>
       );
     }
-    const incompleteDrawing = drawings.find((d) => d.metadata?.isIncomplete && d.type === activeTool);
+    const incompleteDrawing = drawings.find((d) => d.type === activeTool && d.series[0]?.style?.isIncomplete);
     if (!incompleteDrawing) {
       return (
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -34,7 +34,7 @@ const SidebarChannelButton: React.FC = () => {
       );
     }
     const currentPoints = incompleteDrawing.series[0]?.points.length || 0;
-    const maxPoints = incompleteDrawing.metadata?.maxPoints || 3;
+    const maxPoints = incompleteDrawing.series[0]?.style?.maxPoints || 3;
     return maxPoints - currentPoints;
   };
 

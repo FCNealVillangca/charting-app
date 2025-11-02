@@ -15,6 +15,8 @@ export interface BaseChartRef {
 
 export interface Series {
   id: number | null;
+  name?: string | null;
+  style?: Record<string, any>;
   points: { id: number | null; x: number; y: number }[];
 }
 
@@ -24,7 +26,6 @@ export interface Drawing {
   type: 'dot' | 'triangle' | 'square' | 'circle' | 'diamond' | 'line' | 'trendline' | 'fibonacci' | 'channel' | 'rectangle' | 'hline';
   color: string;
   series: Series[];
-  metadata?: Record<string, any>;
 }
 
 export interface ChartContextType {

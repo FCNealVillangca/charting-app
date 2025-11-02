@@ -107,7 +107,7 @@ export function handleLineTool(params: ToolHandlerParams): void {
 
   // Find incomplete line drawing directly from current drawings state
   const incompleteDrawing = drawings.find(
-    (d) => d.metadata?.isIncomplete && d.type === "line"
+    (d) => d.type === "line" && d.series[0]?.style?.isIncomplete
   );
 
 
@@ -121,6 +121,8 @@ export function handleLineTool(params: ToolHandlerParams): void {
       series: [
         {
           id: null,
+          name: "tline",
+          style: { isIncomplete: true, maxPoints: 2 },
           points: [
             {
               id: null,
@@ -130,7 +132,6 @@ export function handleLineTool(params: ToolHandlerParams): void {
           ],
         },
       ],
-      metadata: { isIncomplete: true, maxPoints: 2 },
     };
 
     addDrawing(newDrawing);
@@ -146,7 +147,7 @@ export function handleLineTool(params: ToolHandlerParams): void {
 
     // Check if we've reached the max points for this drawing
     const currentPoints = incompleteDrawing.series[0].points.length + 1; // +1 for the point we just added
-    const maxPoints = incompleteDrawing.metadata?.maxPoints || 2;
+    const maxPoints = incompleteDrawing.series[0]?.style?.maxPoints || 2;
 
     if (currentPoints >= maxPoints) {
       completeDrawing(incompleteDrawing.id);
@@ -174,7 +175,7 @@ export function handleChannelTool(params: ToolHandlerParams): void {
 
   // Find incomplete channel drawing
   const incompleteDrawing = drawings.find(
-    (d) => d.metadata?.isIncomplete && d.type === "channel"
+    (d) => d.type === "channel" && d.series[0]?.style?.isIncomplete
   );
 
   if (!incompleteDrawing) {
@@ -187,6 +188,8 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       series: [
         {
           id: null,
+          name: "tline",
+          style: { isIncomplete: true, maxPoints: 3, role: 'base' },
           points: [
             {
               id: null,
@@ -196,7 +199,6 @@ export function handleChannelTool(params: ToolHandlerParams): void {
           ],
         },
       ],
-      metadata: { isIncomplete: true, maxPoints: 3 },
     };
 
     addDrawing(newDrawing);
@@ -225,6 +227,8 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       // Create the parallel series with independent points
       const parallelSeries = {
         id: null,
+        name: "tline2",
+        style: { role: 'parallel' },
         points: [
           {
             id: null,
@@ -249,6 +253,8 @@ export function handleChannelTool(params: ToolHandlerParams): void {
 
       const dashedSeries = {
         id: null,
+        name: "tlinemid",
+        style: { role: 'dashed' },
         points: [
           { id: null, ...dashedStart },
           { id: null, ...dashedEnd },
@@ -260,6 +266,8 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       const centerY = (baseSeries.points[0].y + baseSeries.points[1].y + parallelStart.y + parallelEnd.y) / 4;
       const centerSeries = {
         id: null,
+        name: "tlinecenter",
+        style: { role: 'center' },
         points: [{ id: null, x: centerX, y: centerY }],
       };
 
@@ -277,13 +285,14 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       ];
 
       if (updateDrawing) {
+        // Mark base series as complete
+        const completedSeries = finalSeries.map((s, i) => (
+          i === 0
+            ? { ...s, style: { ...s.style, isIncomplete: false } }
+            : s
+        ));
         updateDrawing(incompleteDrawing.id, {
-          series: finalSeries,
-          metadata: {
-            isIncomplete: false,
-            dashedSeriesId: dashedId,
-            centerSeriesId: centerId,
-          },
+          series: completedSeries,
         });
       }
 
@@ -315,6 +324,7 @@ export function handleHLineTool(params: ToolHandlerParams): void {
     series: [
       {
         id: null,
+        name: "hline",
         points: [
           {
             id: null,
@@ -324,7 +334,6 @@ export function handleHLineTool(params: ToolHandlerParams): void {
         ],
       },
     ],
-    metadata: { yValue }, // Store the y-value for easy reference
   };
 
   addDrawing(newDrawing);

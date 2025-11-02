@@ -86,7 +86,7 @@ export function useDrawingsPersistence({
 
     const saveDrawings = async () => {
       for (const drawing of drawings) {
-        const isComplete = !drawing.metadata?.isIncomplete;
+        const isComplete = !drawing.series.some(s => s?.style?.isIncomplete);
 
         // Skip incomplete drawings
         if (!isComplete) continue;
@@ -100,8 +100,7 @@ export function useDrawingsPersistence({
               name: drawing.name,
               type: drawing.type,
               color: drawing.color,
-              series: drawing.series,
-              metadata: drawing.metadata,
+              series: drawing.series as any,
               pair: pair.toUpperCase(),
             });
 
@@ -143,8 +142,7 @@ export function useDrawingsPersistence({
               await apiClient.updateDrawing(drawing.id, {
                 name: drawing.name,
                 color: drawing.color,
-                series: drawing.series,
-                metadata: drawing.metadata,
+                series: drawing.series as any,
               });
 
               // Update tracking with current state (IDs stay the same now)

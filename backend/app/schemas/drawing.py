@@ -13,6 +13,8 @@ class Series(BaseModel):
     """Series containing points"""
     id: Optional[int] = None
     points: list[Point]
+    name: Optional[str] = None
+    style: Optional[dict[str, Any]] = None
 
 
 class Drawing(BaseModel):
@@ -22,7 +24,6 @@ class Drawing(BaseModel):
     type: str = Field(..., description="Type of drawing: dot, line, channel, hline, etc.")
     color: str
     series: list[Series]
-    metadata: Optional[dict[str, Any]] = None
     pair: str = Field(..., description="Trading pair this drawing belongs to")
     
     class Config:
@@ -35,7 +36,6 @@ class DrawingCreate(BaseModel):
     type: str
     color: str
     series: list[Series]
-    metadata: Optional[dict[str, Any]] = None
     pair: str
 
 
@@ -44,7 +44,6 @@ class DrawingUpdate(BaseModel):
     name: Optional[str] = None
     color: Optional[str] = None
     series: Optional[list[Series]] = None
-    metadata: Optional[dict[str, Any]] = None
 
 
 class DrawingsResponse(BaseModel):

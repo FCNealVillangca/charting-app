@@ -36,16 +36,45 @@ class DrawingService:
     
     def _drawing_model_to_schema(self, drawing_model: DrawingModel) -> Drawing:
         """Convert SQLAlchemy Drawing model to Pydantic schema."""
-        series_list = [
-            {
+        # Prepare legacy metadata fallback for roles if needed
+        dashed_id = None
+        center_id = None
+        is_channel = drawing_model.type == 'channel'
+        legacy_meta = getattr(drawing_model, 'drawing_metadata', None) or {}
+        if is_channel and isinstance(legacy_meta, dict):
+            dashed_id = legacy_meta.get('dashedSeriesId')
+            center_id = legacy_meta.get('centerSeriesId')
+
+        series_list = []
+        for idx, series_model in enumerate(drawing_model.series):
+            # Base serialization
+            series_dict = {
                 "id": series_model.id,
+                "name": getattr(series_model, 'name', None),
+                "style": getattr(series_model, 'style', None),
                 "points": [
                     {"id": point_model.id, "x": point_model.x, "y": point_model.y}
                     for point_model in series_model.points
                 ],
             }
-            for series_model in drawing_model.series
-        ]
+
+            # Legacy role mapping for channels if style is missing
+            if is_channel:
+                role = None
+                style = series_dict.get("style") or {}
+                if not style.get("role"):
+                    if dashed_id is not None and series_model.id == dashed_id:
+                        role = 'dashed'
+                    elif center_id is not None and series_model.id == center_id:
+                        role = 'center'
+                    elif idx == 0:
+                        role = 'base'
+                    else:
+                        role = 'parallel'
+                    style["role"] = role
+                    series_dict["style"] = style
+
+            series_list.append(series_dict)
 
         return Drawing(
             id=drawing_model.id,
@@ -53,12 +82,11 @@ class DrawingService:
             type=drawing_model.type,
             color=drawing_model.color,
             series=series_list,
-            metadata=drawing_model.drawing_metadata,
             pair=drawing_model.pair.symbol,
         )
     
     def _update_basic_drawing_fields(self, drawing_model: DrawingModel, updates: DrawingUpdate):
-        """Update basic drawing fields (name, color, metadata)"""
+        """Update basic drawing fields (name, color)."""
         update_data = updates.model_dump(exclude_unset=True, exclude={"series"})
         for field, value in update_data.items():
             setattr(drawing_model, field, value)
@@ -80,6 +108,11 @@ class DrawingService:
         
         if series_model:
             series_model.order_index = series_idx
+            # Update name and style if provided
+            if hasattr(series_data, 'name'):
+                series_model.name = series_data.name
+            if hasattr(series_data, 'style'):
+                series_model.style = series_data.style
             self._update_points_for_series(db, series_model, series_data.points)
         else:
             # Series with this ID doesn't exist, create it
@@ -89,7 +122,9 @@ class DrawingService:
         """Create a new series with its points"""
         series_model = SeriesModel(
             drawing_id=drawing_id,
-            order_index=series_idx
+            order_index=series_idx,
+            name=getattr(series_data, 'name', None),
+            style=getattr(series_data, 'style', None),
         )
         db.add(series_model)
         db.flush()
@@ -188,7 +223,6 @@ class DrawingService:
                 name=drawing.name,
                 type=drawing.type,
                 color=drawing.color,
-                drawing_metadata=drawing.metadata,
                 pair_id=pair_id
             )
             db.add(drawing_model)
@@ -196,7 +230,12 @@ class DrawingService:
             
             # Create series and points
             for series_idx, series_data in enumerate(drawing.series):
-                series_model = SeriesModel(drawing_id=drawing_model.id, order_index=series_idx)
+                series_model = SeriesModel(
+                    drawing_id=drawing_model.id,
+                    order_index=series_idx,
+                    name=getattr(series_data, 'name', None),
+                    style=getattr(series_data, 'style', None),
+                )
                 db.add(series_model)
                 db.flush()  # ensure series_model.id
 

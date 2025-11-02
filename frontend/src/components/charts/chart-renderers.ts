@@ -80,9 +80,9 @@ export function renderDrawingSeries(
 
         case "channel":
           // Check if this is the center point (4th series with 1 point)
-          const isCenterPoint = drawing.metadata?.centerSeriesId === s.id;
+          const isCenterPoint = s?.style?.role === 'center';
           // Check if this is the dashed line (3rd series)
-          const isDashedLine = drawing.metadata?.dashedSeriesId === s.id;
+          const isDashedLine = s?.style?.role === 'dashed';
           
           if (isCenterPoint) {
             // Render center point as a single draggable dot
@@ -97,7 +97,7 @@ export function renderDrawingSeries(
           
           if (isDashedLine && s.points.length >= 2) {
             // Only extend if channel is complete
-            const isComplete = !drawing.metadata?.isIncomplete;
+            const isComplete = !(drawing.series[0]?.style?.isIncomplete);
             let lineData = s.points.map((p) => [p.x, p.y]);
             
             if (isComplete && chartDataLength > 0 && s.points.length >= 2) {
@@ -129,7 +129,7 @@ export function renderDrawingSeries(
           if (s.points.length >= 2) {
             // Extend the line if it has 2 points, regardless of completion status
             // For incomplete channels, only extend the first series (base line)
-            const isComplete = !drawing.metadata?.isIncomplete;
+            const isComplete = !(drawing.series[0]?.style?.isIncomplete);
             const isBaseLine = index === 0; // First series is the base line
             
             const shouldExtend = chartDataLength > 0 && (isComplete || isBaseLine);
