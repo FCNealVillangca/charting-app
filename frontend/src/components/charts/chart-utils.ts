@@ -204,12 +204,7 @@ export const completeDrawingById = (
 ): Drawing[] => {
   return drawings.map((d) =>
     d.id === drawingId
-      ? {
-          ...d,
-          series: d.series.map((s, i) =>
-            i === 0 ? { ...s, style: { ...(s.style || {}), isIncomplete: false } } : s
-          ),
-        }
+      ? { ...d, isIncomplete: false }
       : d
   );
 };
@@ -221,7 +216,7 @@ export const getIncompleteDrawing = (
   drawings: Drawing[],
   activeTool: string
 ): Drawing | undefined => {
-  return drawings.find((d) => d.type === activeTool && d.series[0]?.style?.isIncomplete);
+  return drawings.find((d) => d.type === activeTool && d.isIncomplete);
 };
 
 /**

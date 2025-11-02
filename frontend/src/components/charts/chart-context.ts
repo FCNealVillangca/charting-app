@@ -42,7 +42,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
       
       // Check if this is a channel and if we're dragging the center point
       if (drawing && drawing.type === 'channel') {
-        const centerSeries = drawing.series.find(s => s?.style?.role === 'center');
+        const centerSeries = drawing.series.find(s => s?.name === 'tlinecenter' || s.points.length === 1);
         if (centerSeries && centerSeries.id === seriesId) {
         // Moving the center point - move all boundary points by the same delta
         const centerPoint = centerSeries?.points.find(p => p.id === pointId);
@@ -79,8 +79,9 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
       // If this is a channel and we're updating a boundary line (not dashed or center), recalculate dashed line and center
       if (drawing && drawing.type === 'channel') {
         const changedSeries = drawing.series.find(s => s.id === seriesId);
-        const role = changedSeries?.style?.role;
-        if (role !== 'center' && role !== 'dashed') {
+        const isCenter = changedSeries?.name === 'tlinecenter' || changedSeries?.points.length === 1;
+        const isDashed = changedSeries?.name === 'tlinemid';
+        if (!isCenter && !isDashed) {
         return updated.map(d => {
           if (d.id === drawingId) {
             return recalculateChannelCenterLine(d);
@@ -114,7 +115,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   const toggleLineMode = useCallback(() => {
     if (activeTool === "line") {
       // When turning off line mode, remove any incomplete line drawings
-      setDrawings((prev) => prev.filter((d) => !(d.type === "line" && d.series.some(s => s?.style?.isIncomplete))));
+      setDrawings((prev) => prev.filter((d) => !(d.type === "line" && d.isIncomplete)));
       setActiveTool("none");
     } else {
       setActiveTool("line");
@@ -124,7 +125,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
   const toggleChannelMode = useCallback(() => {
     if (activeTool === "channel") {
       // When turning off channel mode, remove any incomplete channel drawings
-      setDrawings((prev) => prev.filter((d) => !(d.type === "channel" && d.series.some(s => s?.style?.isIncomplete))));
+      setDrawings((prev) => prev.filter((d) => !(d.type === "channel" && d.isIncomplete)));
       setActiveTool("none");
     } else {
       setActiveTool("channel");

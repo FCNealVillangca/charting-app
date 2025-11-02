@@ -52,12 +52,29 @@ export function useDrawingsPersistence({
         // Mark this pair as loaded
         hasLoadedForPair.current = pair;
         
-        // Add each loaded drawing to context
-        response.drawings.forEach((drawing) => {
-          addDrawing(drawing as any); // Type cast needed - API type is slightly different
+        // Normalize and add each loaded drawing to context
+        response.drawings.forEach((serverDrawing) => {
+          // Move color into each series.style if missing, and drop drawing.color
+          const normalized: any = {
+            ...serverDrawing,
+            series: serverDrawing.series.map((s: any) => ({
+              ...s,
+              style: (() => {
+                const st = { ...(s.style || {}) } as any;
+                // move color down from drawing
+                if (serverDrawing.color && !st.color) st.color = serverDrawing.color;
+                // strip role if present
+                if (st.role !== undefined) delete st.role;
+                return st;
+              })(),
+            })),
+          };
+          delete normalized.color;
+
+          addDrawing(normalized as any);
           // Mark as saved and track state
-          savedDrawingIds.current.add(drawing.id);
-          lastSavedState.current.set(drawing.id, JSON.stringify(drawing));
+          savedDrawingIds.current.add(serverDrawing.id);
+          lastSavedState.current.set(serverDrawing.id, JSON.stringify(normalized));
         });
         
         return response.drawings;
@@ -86,7 +103,7 @@ export function useDrawingsPersistence({
 
     const saveDrawings = async () => {
       for (const drawing of drawings) {
-        const isComplete = !drawing.series.some(s => s?.style?.isIncomplete);
+        const isComplete = !drawing.isIncomplete;
 
         // Skip incomplete drawings
         if (!isComplete) continue;
@@ -96,10 +113,12 @@ export function useDrawingsPersistence({
           // New complete drawing - persist to backend first
           try {
             setIsLoading(true);
+            const color = (drawing.series[0] as any)?.style?.color || drawing.color || '#000000';
             const createdDrawing = await apiClient.createDrawing({
               name: drawing.name,
               type: drawing.type,
-              color: drawing.color,
+              color,
+              isIncomplete: drawing.isIncomplete,
               series: drawing.series as any,
               pair: pair.toUpperCase(),
             });
@@ -139,9 +158,11 @@ export function useDrawingsPersistence({
           if (hasChanged) {
             try {
               setIsLoading(true);
+              const color = (drawing.series[0] as any)?.style?.color || drawing.color || '#000000';
               await apiClient.updateDrawing(drawing.id, {
                 name: drawing.name,
-                color: drawing.color,
+                color,
+                isIncomplete: drawing.isIncomplete,
                 series: drawing.series as any,
               });
 

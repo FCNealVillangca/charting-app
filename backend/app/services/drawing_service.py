@@ -58,10 +58,17 @@ class DrawingService:
                 ],
             }
 
+            # Ensure style is a dict and ensure color fallback from drawing
+            style = series_dict.get("style") or {}
+            if not isinstance(style, dict):
+                style = {}
+            if not style.get("color") and getattr(drawing_model, 'color', None):
+                style["color"] = drawing_model.color
+            series_dict["style"] = style
+
             # Legacy role mapping for channels if style is missing
             if is_channel:
                 role = None
-                style = series_dict.get("style") or {}
                 if not style.get("role"):
                     if dashed_id is not None and series_model.id == dashed_id:
                         role = 'dashed'
@@ -82,12 +89,16 @@ class DrawingService:
             type=drawing_model.type,
             color=drawing_model.color,
             series=series_list,
+            isIncomplete=bool(getattr(drawing_model, 'is_incomplete', False)),
             pair=drawing_model.pair.symbol,
         )
     
     def _update_basic_drawing_fields(self, drawing_model: DrawingModel, updates: DrawingUpdate):
         """Update basic drawing fields (name, color)."""
         update_data = updates.model_dump(exclude_unset=True, exclude={"series"})
+        # map camelCase to snake_case for DB columns
+        if 'isIncomplete' in update_data:
+            drawing_model.is_incomplete = bool(update_data.pop('isIncomplete'))
         for field, value in update_data.items():
             setattr(drawing_model, field, value)
     
@@ -219,12 +230,25 @@ class DrawingService:
             pair_id = self._require_pair_id(db, drawing.pair)
             
             # Create drawing (ID will be auto-generated)
+            # Determine drawing color from first series style (fallback to provided or black)
+            first_series_style = None
+            try:
+                first_series_style = drawing.series[0].style if drawing.series else None
+            except Exception:
+                first_series_style = None
+            derived_color = None
+            if isinstance(first_series_style, dict):
+                derived_color = first_series_style.get('color')
+
             drawing_model = DrawingModel(
                 name=drawing.name,
                 type=drawing.type,
-                color=drawing.color,
+                color=drawing.color or derived_color or "#000000",
                 pair_id=pair_id
             )
+            # Set incomplete flag if provided
+            if getattr(drawing, 'isIncomplete', None) is not None:
+                drawing_model.is_incomplete = bool(drawing.isIncomplete)
             db.add(drawing_model)
             db.flush()  # Get auto-generated ID
             

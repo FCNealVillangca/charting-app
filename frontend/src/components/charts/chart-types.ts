@@ -24,8 +24,9 @@ export interface Drawing {
   id: number | null;
   name: string;
   type: 'dot' | 'triangle' | 'square' | 'circle' | 'diamond' | 'line' | 'trendline' | 'fibonacci' | 'channel' | 'rectangle' | 'hline';
-  color: string;
+  color?: string;
   series: Series[];
+  isIncomplete?: boolean;
 }
 
 export interface ChartContextType {

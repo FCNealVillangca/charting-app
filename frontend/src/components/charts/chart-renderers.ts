@@ -53,7 +53,7 @@ export function renderDrawingSeries(
   return drawings.flatMap((drawing) =>
     drawing.series.flatMap((s, index) => {
       const baseOptions = createBaseSeriesOptions(drawing, index, s.points);
-      const color = drawing.color || "#000000"; // Default to black for all drawings
+      const color = (s as any)?.style?.color || "#000000"; // color per series
 
       switch (drawing.type) {
         case "line":
@@ -79,10 +79,9 @@ export function renderDrawingSeries(
           }
 
         case "channel":
-          // Check if this is the center point (4th series with 1 point)
-          const isCenterPoint = s?.style?.role === 'center';
-          // Check if this is the dashed line (3rd series)
-          const isDashedLine = s?.style?.role === 'dashed';
+          // Derive by name
+          const isCenterPoint = s?.name === 'tlinecenter' || s.points.length === 1;
+          const isDashedLine = s?.name === 'tlinemid';
           
           if (isCenterPoint) {
             // Render center point as a single draggable dot
@@ -97,7 +96,7 @@ export function renderDrawingSeries(
           
           if (isDashedLine && s.points.length >= 2) {
             // Only extend if channel is complete
-            const isComplete = !(drawing.series[0]?.style?.isIncomplete);
+            const isComplete = !drawing.isIncomplete;
             let lineData = s.points.map((p) => [p.x, p.y]);
             
             if (isComplete && chartDataLength > 0 && s.points.length >= 2) {
@@ -129,7 +128,7 @@ export function renderDrawingSeries(
           if (s.points.length >= 2) {
             // Extend the line if it has 2 points, regardless of completion status
             // For incomplete channels, only extend the first series (base line)
-            const isComplete = !(drawing.series[0]?.style?.isIncomplete);
+            const isComplete = !drawing.isIncomplete;
             const isBaseLine = index === 0; // First series is the base line
             
             const shouldExtend = chartDataLength > 0 && (isComplete || isBaseLine);

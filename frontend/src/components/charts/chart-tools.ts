@@ -70,10 +70,10 @@ export function handleShapeTool(
     id: null,
     name: `Point ${drawingNumber}`,
     type: toolType as any,
-    color: "#000000", // Black
     series: [
       {
         id: null,
+        style: { color: "#000000" },
         points: [
           {
             id: null,
@@ -107,7 +107,7 @@ export function handleLineTool(params: ToolHandlerParams): void {
 
   // Find incomplete line drawing directly from current drawings state
   const incompleteDrawing = drawings.find(
-    (d) => d.type === "line" && d.series[0]?.style?.isIncomplete
+    (d) => d.type === "line" && d.isIncomplete
   );
 
 
@@ -117,12 +117,11 @@ export function handleLineTool(params: ToolHandlerParams): void {
       id: null,
       name: `Line ${drawings.filter((d) => d.type === "line").length + 1}`,
       type: "line" as const,
-      color: "#000000", // Black
       series: [
         {
           id: null,
           name: "tline",
-          style: { isIncomplete: true, maxPoints: 2 },
+          style: { maxPoints: 2, color: "#000000" },
           points: [
             {
               id: null,
@@ -132,6 +131,7 @@ export function handleLineTool(params: ToolHandlerParams): void {
           ],
         },
       ],
+      isIncomplete: true,
     };
 
     addDrawing(newDrawing);
@@ -175,7 +175,7 @@ export function handleChannelTool(params: ToolHandlerParams): void {
 
   // Find incomplete channel drawing
   const incompleteDrawing = drawings.find(
-    (d) => d.type === "channel" && d.series[0]?.style?.isIncomplete
+    (d) => d.type === "channel" && d.isIncomplete
   );
 
   if (!incompleteDrawing) {
@@ -184,12 +184,11 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       id: null,
       name: `Channel ${drawings.filter((d) => d.type === "channel").length + 1}`,
       type: "channel" as const,
-      color: "#000000", // Black
       series: [
         {
           id: null,
           name: "tline",
-          style: { isIncomplete: true, maxPoints: 3, role: 'base' },
+          style: { maxPoints: 3, color: "#000000" },
           points: [
             {
               id: null,
@@ -199,6 +198,7 @@ export function handleChannelTool(params: ToolHandlerParams): void {
           ],
         },
       ],
+      isIncomplete: true,
     };
 
     addDrawing(newDrawing);
@@ -228,7 +228,7 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       const parallelSeries = {
         id: null,
         name: "tline2",
-        style: { role: 'parallel' },
+        style: { color: "#000000" },
         points: [
           {
             id: null,
@@ -254,7 +254,7 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       const dashedSeries = {
         id: null,
         name: "tlinemid",
-        style: { role: 'dashed' },
+        style: { color: "#888888" },
         points: [
           { id: null, ...dashedStart },
           { id: null, ...dashedEnd },
@@ -267,7 +267,7 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       const centerSeries = {
         id: null,
         name: "tlinecenter",
-        style: { role: 'center' },
+        style: { color: "#000000" },
         points: [{ id: null, x: centerX, y: centerY }],
       };
 
@@ -285,14 +285,9 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       ];
 
       if (updateDrawing) {
-        // Mark base series as complete
-        const completedSeries = finalSeries.map((s, i) => (
-          i === 0
-            ? { ...s, style: { ...s.style, isIncomplete: false } }
-            : s
-        ));
         updateDrawing(incompleteDrawing.id, {
-          series: completedSeries,
+          series: finalSeries,
+          isIncomplete: false,
         });
       }
 
@@ -320,11 +315,11 @@ export function handleHLineTool(params: ToolHandlerParams): void {
     id: null,
     name: `H-Line ${drawingNumber}`,
     type: "hline" as const,
-    color: "#000000", // Black
     series: [
       {
         id: null,
         name: "hline",
+        style: { color: "#000000" },
         points: [
           {
             id: null,
@@ -334,6 +329,7 @@ export function handleHLineTool(params: ToolHandlerParams): void {
         ],
       },
     ],
+    isIncomplete: false,
   };
 
   addDrawing(newDrawing);
