@@ -203,9 +203,14 @@ export function renderDrawingSeries(
           if (s.points.length >= 1) {
             const yValue = s.points[0].y;
             
+            // Use a line that spans the entire x-axis range with extra extension
+            // This approach ensures the line always extends beyond visible area
             return {
               name: drawing.name,
-              data: [[0, yValue], [chartDataLength - 1, yValue]],
+              data: [
+                [-Number.MAX_SAFE_INTEGER, yValue], 
+                [Number.MAX_SAFE_INTEGER, yValue]
+              ],
               type: "line" as const,
               color,
               lineColor: color,
@@ -213,6 +218,14 @@ export function renderDrawingSeries(
               lineWidth: 2,
               showInLegend: false,
               enableMouseTracking: false,
+              // Critical: disable clipping so line extends beyond plot area
+              clip: false,
+              // Ensure line renders above other elements
+              zIndex: 3,
+              // Disable animation to prevent rendering issues
+              animation: false,
+              // Force line to be visible across entire chart
+              cropThreshold: 0,
             } as Highcharts.SeriesLineOptions;
           } else {
             return [];

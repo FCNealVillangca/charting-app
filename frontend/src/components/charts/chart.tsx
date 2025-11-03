@@ -136,6 +136,8 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           },
           panKey: "shift",
           resetZoomButton: null,
+          marginBottom: 60, // Extra space for x-axis labels
+          spacingBottom: 20, // Additional spacing at bottom
         },
 
         title: {
@@ -153,10 +155,13 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
               }
               return "";
             },
+            step: 1, // Allow Highcharts to automatically space labels to prevent overlap
+            maxStaggerLines: 2, // Allow up to 2 lines of staggered labels
+            overflow: 'justify', // Handle label overflow better
           },
           gridLineWidth: 1,
           gridLineColor: "#e0e0e0",
-          minRange: 100, // Minimum zoom range (100 data points)
+          minRange: 5, // Minimum zoom range (5 data points - allows close inspection)
           events: {
             afterSetExtremes: function () {
               // Log when index 0 becomes visible and trigger callback
@@ -207,6 +212,10 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
             upColor: "#089981",
             lineColor: "#f23645",
             upLineColor: "#089981",
+            pointWidth: null, // Let Highcharts calculate width automatically
+            maxPointWidth: 50, // Maximum width when zoomed in
+            groupPadding: 0.1, // Small padding between groups
+            pointPadding: 0.1, // Small padding between points
           },
           series: {
             animation: false, // Disable all series animations including transitions
@@ -388,9 +397,18 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           chart.series[chart.series.length - 1].remove(false);
         }
         
-        // Add new drawing series
-        drawingSeries.forEach(series => {
+        // Add new drawing series with forced redraw
+        drawingSeries.forEach((series) => {
           chart.addSeries(series, false);
+          // For horizontal lines, force immediate update to ensure proper rendering
+          if ((series as any).name && (series as any).name.includes('H-Line')) {
+            setTimeout(() => {
+              const addedSeries = chart.series[chart.series.length - 1];
+              if (addedSeries && typeof addedSeries.update === 'function') {
+                addedSeries.update(series, true);
+              }
+            }, 0);
+          }
         });
         
         // 🔒 RESTORE axis extremes AFTER updating series (prevents auto-scale)
