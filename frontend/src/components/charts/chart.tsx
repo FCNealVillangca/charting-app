@@ -145,6 +145,10 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         },
         xAxis: {
           type: "linear",
+          startOnTick: true,
+          endOnTick: true,
+          showFirstLabel: true,
+          showLastLabel: true,
           labels: {
             formatter: function () {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
