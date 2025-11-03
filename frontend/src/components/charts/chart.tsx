@@ -45,6 +45,7 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
     const chartRef = useRef<HTMLDivElement | null>(null);
     const chartInstance = useRef<Highcharts.Chart | null>(null);
     const prevDataLengthRef = useRef<number>(0);
+    const prevChartDataRef = useRef<DataPoint[]>([]);
     const {
       drawings,
       addDrawing,
@@ -308,24 +309,65 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           const prevDataLength = prevDataLengthRef.current;
           const dataLengthChange = currentDataLength - prevDataLength;
           
+          // Save the actual timestamps that were being viewed before data update
+          let viewedStartTimestamp: number | null = null;
+          let viewedEndTimestamp: number | null = null;
+          
+          if (wasZoomed && dataLengthChange !== 0) {
+            // Get the timestamps for the current view extremes (before data changes)
+            const prevChartData = prevChartDataRef.current;
+            if (prevChartData.length > 0) {
+              const minIndex = Math.max(0, Math.floor(extremes.min));
+              const maxIndex = Math.min(prevChartData.length - 1, Math.ceil(extremes.max));
+              viewedStartTimestamp = prevChartData[minIndex]?.time || null;
+              viewedEndTimestamp = prevChartData[maxIndex]?.time || null;
+            }
+          }
+          
           // Update the series data without animation to prevent flicker
           candlestickSeries.setData(highchartsData, false, false, false);
           
-          // If user was zoomed/panned and data length changed, adjust extremes
-          if (wasZoomed && dataLengthChange !== 0) {
-            const adjustedMin = extremes.min + dataLengthChange;
-            const adjustedMax = extremes.max + dataLengthChange;
-            xAxis.setExtremes(adjustedMin, adjustedMax, false, false);
+          // If user was zoomed/panned and data length changed, restore view based on timestamps
+          if (wasZoomed && dataLengthChange !== 0 && viewedStartTimestamp && viewedEndTimestamp) {
+            // Find the new indices for the same timestamps in the updated data
+            const newStartIndex = chartData.findIndex(d => d.time >= viewedStartTimestamp!);
+            const newEndIndex = chartData.findIndex(d => d.time >= viewedEndTimestamp!);
+            
+            if (newStartIndex !== -1 && newEndIndex !== -1) {
+              // Use the timestamp-based indices to restore the view
+              xAxis.setExtremes(newStartIndex, newEndIndex, false, false);
+            } else {
+              // Fallback to simple shift if timestamp lookup fails
+              const adjustedMin = Math.max(0, extremes.min + dataLengthChange);
+              const adjustedMax = Math.min(currentDataLength - 1, extremes.max + dataLengthChange);
+              xAxis.setExtremes(adjustedMin, adjustedMax, false, false);
+            }
           }
           
-          // Update previous data length
+          // Update the x-axis formatter to use the new chartData
+          xAxis.update({
+            labels: {
+              formatter: function () {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const index = (this as any).value;
+                if (index >= 0 && index < chartData.length) {
+                  const date = new Date(chartData[index].time * 1000);
+                  return date.toLocaleDateString();
+                }
+                return "";
+              },
+            },
+          }, false);
+          
+          // Update previous data length and chartData references
           prevDataLengthRef.current = currentDataLength;
+          prevChartDataRef.current = chartData;
           
           // Redraw chart once after all updates
           chart.redraw(false);
         }
       }
-    }, [highchartsData]);
+    }, [highchartsData, chartData]);
 
 
     // Update drawing series when drawings change
