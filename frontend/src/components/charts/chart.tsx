@@ -165,9 +165,9 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           minRange: 1, // Minimum range in ordinal axis (number of points, not time)
           events: {
             afterSetExtremes: function () {
-              // Log when reaching start and trigger callback
+              // Trigger pagination check when chart view changes
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              maybeLogChartStart(this as any, onReachStart);
+              maybeLogChartStart(this as any, chartData, onReachStart);
             },
           },
           crosshair: {
@@ -444,8 +444,8 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         completeDrawing,
         updateDrawing
       );
-      const handleKeyDown = createHandleKeyDown(chartInstance, onReachStart);
-      const handleWheel = createHandleWheel(chartInstance, onReachStart);
+      const handleKeyDown = createHandleKeyDown(chartInstance, chartData, onReachStart);
+      const handleWheel = createHandleWheel(chartInstance, chartData, onReachStart);
 
       window.addEventListener("resize", handleResize);
       window.addEventListener("keydown", handleKeyDown);

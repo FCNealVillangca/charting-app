@@ -38,6 +38,7 @@ function Pairs() {
           limit: 500, // Load first 500 candles initially
         });
 
+
         setData(response.results);
         setPrevUrl(response.previous);
         setError(null);

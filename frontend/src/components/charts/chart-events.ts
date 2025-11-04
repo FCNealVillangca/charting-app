@@ -7,35 +7,55 @@ import { indexToNearestTimestamp } from "./chart-utils";
 let lastEndAlertTime = 0;
 
 /**
- * Check if index 0 (leftmost/oldest data) is visible in the chart view
+ * Check if the leftmost/oldest data is visible in the chart view
+ * Works with datetime x-axis by checking against the first data point's timestamp
  */
 export function checkIfAtChartStart(
   xAxis: Highcharts.Axis,
+  chartData: DataPoint[],
   tolerancePoints: number = 5
 ): boolean {
   const extremes = xAxis.getExtremes();
+  
   if (typeof extremes.min !== "number") {
     return false;
   }
   
-  // Check if we're viewing index 0 (leftmost data)
-  const isAtStart = extremes.min <= tolerancePoints;
-  if (isAtStart) {
+  if (!chartData || chartData.length === 0) {
+    return false;
   }
+  
+  // Get the first data point's timestamp (convert to milliseconds for comparison with extremes)
+  const firstTimestamp = chartData[0].time * 1000; // Convert from seconds to milliseconds
+  if (typeof firstTimestamp !== "number") {
+    return false;
+  }
+  
+  // Convert tolerance from points to time range
+  // Estimate time per point based on first few data points
+  let timePerPoint = 15 * 60 * 1000; // Default: 15 minutes in ms
+  if (chartData.length > 1) {
+    timePerPoint = (chartData[1].time - chartData[0].time) * 1000; // Convert to ms
+  }
+  
+  const toleranceTime = tolerancePoints * timePerPoint;
+  
+  // Check if we're viewing near the first timestamp
+  const isAtStart = extremes.min <= firstTimestamp + toleranceTime;
+  
   return isAtStart;
 }
 
 /**
- * Console log when index 0 is visible (debounced) and trigger callback
+ * Trigger callback when the leftmost data is visible (debounced)
  */
-export function maybeLogChartStart(xAxis: Highcharts.Axis, onReachStart?: () => void) {
-  if (checkIfAtChartStart(xAxis)) {
+export function maybeLogChartStart(xAxis: Highcharts.Axis, chartData: DataPoint[], onReachStart?: () => void) {
+  if (checkIfAtChartStart(xAxis, chartData)) {
     const now = Date.now();
     if (now - lastEndAlertTime > 3000) { // 3 second debounce
       lastEndAlertTime = now;
       if (onReachStart) {
         onReachStart();
-      } else {
       }
     }
   }
@@ -71,7 +91,7 @@ export function createHandleMouseMove(
     const yAxis = chart.yAxis[0];
 
     // Check if we've reached the start and trigger callback
-    maybeLogChartStart(xAxis, onReachStart);
+    maybeLogChartStart(xAxis, chartData, onReachStart);
 
     // Get mouse position relative to chart
     const rect = chart.container.getBoundingClientRect();
@@ -304,6 +324,7 @@ export function createHandleMouseDown(
  */
 export function createHandleKeyDown(
   chartInstance: { current: Highcharts.Chart | null },
+  chartData: DataPoint[],
   onReachStart?: () => void
 ) {
   return (e: KeyboardEvent) => {
@@ -318,7 +339,7 @@ export function createHandleKeyDown(
         e.preventDefault();
         xAxis.setExtremes(extremes.min - panStep, extremes.max - panStep);
         // Check if we've reached the start after panning
-        setTimeout(() => maybeLogChartStart(xAxis, onReachStart), 0);
+        setTimeout(() => maybeLogChartStart(xAxis, chartData, onReachStart), 0);
         break;
       case "ArrowRight":
         e.preventDefault();
@@ -338,6 +359,7 @@ export function createHandleKeyDown(
  */
 export function createHandleWheel(
   chartInstance: { current: Highcharts.Chart | null },
+  chartData: DataPoint[],
   onReachStart?: () => void
 ) {
   return (e: WheelEvent) => {
@@ -357,7 +379,7 @@ export function createHandleWheel(
       xAxis.setExtremes(extremes.min + panAmount, extremes.max + panAmount);
       
       // Check if we've reached the start after panning
-      setTimeout(() => maybeLogChartStart(xAxis, onReachStart), 0);
+      setTimeout(() => maybeLogChartStart(xAxis, chartData, onReachStart), 0);
     }
   };
 }
