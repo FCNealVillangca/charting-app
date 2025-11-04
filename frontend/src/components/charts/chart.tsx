@@ -91,8 +91,8 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
 
     const highchartsData = useMemo(() => {
       if (chartData.length === 0) return [];
-      const result = chartData.map((d, index) => [
-        index, // Use index instead of time to avoid gaps
+      const result = chartData.map((d) => [
+        d.time * 1000, // Use timestamp in milliseconds
         d.open,
         d.high,
         d.low,
@@ -144,31 +144,28 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           text: "",
         },
         xAxis: {
-          type: "linear",
-          startOnTick: true,
-          endOnTick: true,
+          type: "datetime",
+          ordinal: true, // This removes gaps in time series
           showFirstLabel: true,
           showLastLabel: true,
+          minPadding: 0.02,
+          maxPadding: 0.02,
           labels: {
+            overflow: 'allow',
+            style: {
+              fontSize: '11px'
+            },
             formatter: function () {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const index = (this as any).value;
-              if (index >= 0 && index < chartData.length) {
-                const date = new Date(chartData[index].time * 1000);
-                return date.toLocaleDateString();
-              }
-              return "";
-            },
-            step: 1, // Allow Highcharts to automatically space labels to prevent overlap
-            maxStaggerLines: 2, // Allow up to 2 lines of staggered labels
-            overflow: 'justify', // Handle label overflow better
+              return Highcharts.dateFormat('%m/%d/%Y', (this as any).value);
+            }
           },
           gridLineWidth: 1,
           gridLineColor: "#e0e0e0",
-          minRange: 5, // Minimum zoom range (5 data points - allows close inspection)
+          minRange: 1, // Minimum range in ordinal axis (number of points, not time)
           events: {
             afterSetExtremes: function () {
-              // Log when index 0 becomes visible and trigger callback
+              // Log when reaching start and trigger callback
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               maybeLogChartStart(this as any, onReachStart);
             },
@@ -224,6 +221,13 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           series: {
             animation: false, // Disable all series animations including transitions
             enableMouseTracking: true,
+            // Fix 1 & 5: Configure data grouping to preserve first/last points
+            dataGrouping: {
+              enabled: true,
+              firstAnchor: 'firstPoint', // Anchor to first data point
+              lastAnchor: 'lastPoint', // Anchor to last data point
+              forced: false, // Don't force grouping when not needed
+            },
             states: {
               hover: {
                 enabled: false, // Disable hover effects to keep points consistent
@@ -285,12 +289,17 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
         // Force consistent initial viewport - always show last 400 candles
         const dataLength = highchartsData.length;
         const visibleCandles = 400;
-        chartInstance.current.xAxis[0].setExtremes(
-          Math.max(0, dataLength - visibleCandles),
-          dataLength - 1,
-          true,
-          false
-        );
+        if (dataLength > visibleCandles) {
+          const startIndex = Math.max(0, dataLength - visibleCandles);
+          const startTime = highchartsData[startIndex][0]; // Get timestamp
+          const endTime = highchartsData[dataLength - 1][0]; // Get timestamp
+          chartInstance.current.xAxis[0].setExtremes(
+            startTime,
+            endTime,
+            true,
+            false
+          );
+        }
 
         if (onChartCreated) {
           onChartCreated(chartElement);
@@ -327,14 +336,10 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           let viewedEndTimestamp: number | null = null;
           
           if (wasZoomed && dataLengthChange !== 0) {
-            // Get the timestamps for the current view extremes (before data changes)
-            const prevChartData = prevChartDataRef.current;
-            if (prevChartData.length > 0) {
-              const minIndex = Math.max(0, Math.floor(extremes.min));
-              const maxIndex = Math.min(prevChartData.length - 1, Math.ceil(extremes.max));
-              viewedStartTimestamp = prevChartData[minIndex]?.time || null;
-              viewedEndTimestamp = prevChartData[maxIndex]?.time || null;
-            }
+            // With ordinal datetime axis, extremes.min/max are timestamp values in milliseconds
+            // Save the actual timestamp values being viewed
+            viewedStartTimestamp = extremes.min / 1000; // Convert back to seconds
+            viewedEndTimestamp = extremes.max / 1000; // Convert back to seconds
           }
           
           // Update the series data without animation to prevent flicker
@@ -342,35 +347,11 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
           
           // If user was zoomed/panned and data length changed, restore view based on timestamps
           if (wasZoomed && dataLengthChange !== 0 && viewedStartTimestamp && viewedEndTimestamp) {
-            // Find the new indices for the same timestamps in the updated data
-            const newStartIndex = chartData.findIndex(d => d.time >= viewedStartTimestamp!);
-            const newEndIndex = chartData.findIndex(d => d.time >= viewedEndTimestamp!);
-            
-            if (newStartIndex !== -1 && newEndIndex !== -1) {
-              // Use the timestamp-based indices to restore the view
-              xAxis.setExtremes(newStartIndex, newEndIndex, false, false);
-            } else {
-              // Fallback to simple shift if timestamp lookup fails
-              const adjustedMin = Math.max(0, extremes.min + dataLengthChange);
-              const adjustedMax = Math.min(currentDataLength - 1, extremes.max + dataLengthChange);
-              xAxis.setExtremes(adjustedMin, adjustedMax, false, false);
-            }
+            // Convert timestamps to milliseconds for datetime axis
+            const startTime = viewedStartTimestamp * 1000;
+            const endTime = viewedEndTimestamp * 1000;
+            xAxis.setExtremes(startTime, endTime, false, false);
           }
-          
-          // Update the x-axis formatter to use the new chartData
-          xAxis.update({
-            labels: {
-              formatter: function () {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const index = (this as any).value;
-                if (index >= 0 && index < chartData.length) {
-                  const date = new Date(chartData[index].time * 1000);
-                  return date.toLocaleDateString();
-                }
-                return "";
-              },
-            },
-          }, false);
           
           // Update previous data length and chartData references
           prevDataLengthRef.current = currentDataLength;
