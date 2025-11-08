@@ -67,7 +67,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
             return d;
           });
           
-          // No need to recalculate since everything moved together
+
           return updated;
         }
       }
@@ -90,7 +90,7 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         });
         }
       }
-      
+  
       return updated;
     });
   }, []);
