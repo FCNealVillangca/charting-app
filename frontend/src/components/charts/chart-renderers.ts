@@ -1,7 +1,6 @@
 import Highcharts from "highcharts";
 import type { Drawing, DataPoint } from "./chart-types";
 import {
-  extendLineToRange,
   drawingXToTimestamp,
   axisDeltaToSeconds,
 } from "./chart-utils";
@@ -121,25 +120,10 @@ export function renderDrawingSeries(
           }
           
           if (isDashedLine && pointsWithTime.length >= 2) {
-            const isComplete = !drawing.isIncomplete;
-            let linePoints = pointsWithTime;
-
-            if (isComplete && pointsWithTime.length >= 2) {
-              const [p1, p2] = extendLineToRange(
-                pointsWithTime[0],
-                pointsWithTime[1],
-                extendMinTime,
-                extendMaxTime,
-                yMin,
-                yMax
-              );
-              linePoints = [p1, p2];
-            }
-            
             // Render dashed line (no draggable markers on the line endpoints)
             return {
               ...baseOptions,
-              data: toHighchartsData(linePoints),
+              data: toHighchartsData(pointsWithTime),
               type: "line" as const,
               color: "#888888", // Gray for dashed line
               marker: { enabled: false }, // No markers on dashed line
@@ -149,60 +133,17 @@ export function renderDrawingSeries(
             } as Highcharts.SeriesLineOptions;
           }
           
-          // Render boundary lines with extension
+          // Render boundary lines without extension (only between provided points)
           if (pointsWithTime.length >= 2) {
-            const isComplete = !drawing.isIncomplete;
-            const isBaseLine = index === 0; // First series is the base line
-            
-            const shouldExtend = pointsWithTime.length >= 2 && (isComplete || isBaseLine);
-            
-            if (shouldExtend) {
-              // Extend line to chart boundaries
-              const [p1, p2] = extendLineToRange(
-                pointsWithTime[0],
-                pointsWithTime[1],
-                extendMinTime,
-                extendMaxTime,
-                yMin,
-                yMax
-              );
-              
-              // Return both the extended line (non-interactive) and control points (interactive)
-              return [
-                // Extended line without markers
-                {
-                  name: `${drawing.name} - ${index + 1} (line)`,
-                  data: toHighchartsData([p1, p2]),
-                  type: "line" as const,
-                  color,
-                  lineColor: color,
-                  marker: { enabled: false },
-                  lineWidth: 2,
-                  showInLegend: false,
-                  enableMouseTracking: false,
-                } as Highcharts.SeriesLineOptions,
-                // Control points with markers (interactive)
-                {
-                  ...baseOptions,
-                  data: toHighchartsData(pointsWithTime),
-                  type: "scatter" as const,
-                  color,
-                  marker: createMarker(color, 4, "circle"),
-                  lineWidth: 0,
-                } as Highcharts.SeriesScatterOptions,
-              ] as any;
-            } else {
-              // Incomplete parallel line (not base line) - render normal line
-              return {
-                ...baseOptions,
-                data: toHighchartsData(pointsWithTime),
-                type: "line" as const,
-                color,
-                lineColor: color,
-                marker: createMarker(color, 4, "circle"),
-                lineWidth: 2,
-              } as Highcharts.SeriesLineOptions;
-            }
+            return {
+              ...baseOptions,
+              data: toHighchartsData(pointsWithTime),
+              type: "line" as const,
+              color,
+              lineColor: color,
+              marker: createMarker(color, 4, "circle"),
+              lineWidth: 2,
+            } as Highcharts.SeriesLineOptions;
           } else {
             // Incomplete channel - render first point as scatter
             return {
