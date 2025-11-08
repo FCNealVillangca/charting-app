@@ -1,6 +1,10 @@
 import Highcharts from "highcharts";
 import type { Drawing, DataPoint } from "./chart-types";
-import { extendLineToRange, timestampToIndex } from "./chart-utils";
+import {
+  extendLineToRange,
+  drawingXToTimestamp,
+  axisDeltaToSeconds,
+} from "./chart-utils";
 
 /**
  * Creates a marker configuration object
@@ -47,29 +51,40 @@ function createBaseSeriesOptions(
  */
 export function renderDrawingSeries(
   drawings: Drawing[],
-  chartData: DataPoint[],  // Changed: Need full chartData to convert timestamps
+  chartData: DataPoint[],
   yMin: number = -Infinity,
   yMax: number = Infinity
 ): Highcharts.SeriesOptionsType[] {
-  const chartDataLength = chartData.length;
-  
+  const hasData = chartData.length > 0;
+  const startTime = hasData ? chartData[0].time : 0;
+  const endTime = hasData ? chartData[chartData.length - 1].time : 0;
+  const timeSpan = Math.max(endTime - startTime, 1);
+  const extendMinTime = hasData ? startTime - timeSpan : startTime - 86400;
+  const extendMaxTime = hasData ? endTime + timeSpan : endTime + 86400;
+
+  const toHighchartsData = (points: { x: number; y: number }[]): [number, number][] =>
+    points.map((p) => [p.x * 1000, p.y]);
+
   return drawings.flatMap((drawing) =>
     drawing.series.flatMap((s, index) => {
-      // Convert timestamps (stored in x) to indices for rendering
-      const pointsWithIndices = s.points.map(p => ({
-        x: timestampToIndex(p.x, chartData),  // Convert timestamp -> index
-        y: p.y
-      })).filter(p => p.x !== -1);  // Filter out points not found in current data
-      
-      const baseOptions = createBaseSeriesOptions(drawing, index, pointsWithIndices);
-      const color = (s as any)?.style?.color || "#000000"; // color per series
+      const pointsWithTime = s.points
+        .map((p) => {
+          const timestamp = drawingXToTimestamp(p.x, chartData);
+          if (timestamp === null) return null;
+          return { x: timestamp, y: p.y };
+        })
+        .filter((p): p is { x: number; y: number } => p !== null);
+
+      const baseOptions = createBaseSeriesOptions(drawing, index, pointsWithTime);
+      const color = (s as any)?.style?.color || "#000000";
 
       switch (drawing.type) {
         case "line":
           // Complete line with 2+ points - render as line
-          if (pointsWithIndices.length >= 2) {
+          if (pointsWithTime.length >= 2) {
             return {
               ...baseOptions,
+              data: toHighchartsData(pointsWithTime),
               type: "line" as const,
               color,
               lineColor: color,
@@ -80,6 +95,7 @@ export function renderDrawingSeries(
             // Incomplete line - render first point as scatter
             return {
               ...baseOptions,
+              data: toHighchartsData(pointsWithTime),
               type: "scatter" as const,
               color,
               marker: createMarker(color, 4, "circle"),
@@ -96,34 +112,34 @@ export function renderDrawingSeries(
             // Render center point as a single draggable dot
             return {
               ...baseOptions,
+              data: toHighchartsData(pointsWithTime),
               type: "scatter" as const,
-              color: "#000000", // Black like boundary dots
-              marker: createMarker("#000000", 4, "circle"), // Same size as boundary dots
+              color: "#000000",
+              marker: createMarker("#000000", 4, "circle"),
               lineWidth: 0,
             } as Highcharts.SeriesScatterOptions;
           }
           
-          if (isDashedLine && pointsWithIndices.length >= 2) {
-            // Only extend if channel is complete
+          if (isDashedLine && pointsWithTime.length >= 2) {
             const isComplete = !drawing.isIncomplete;
-            let lineData = pointsWithIndices.map((p) => [p.x, p.y]);
-            
-            if (isComplete && chartDataLength > 0 && pointsWithIndices.length >= 2) {
+            let linePoints = pointsWithTime;
+
+            if (isComplete && pointsWithTime.length >= 2) {
               const [p1, p2] = extendLineToRange(
-                pointsWithIndices[0],
-                pointsWithIndices[1],
-                0,
-                chartDataLength - 1,
+                pointsWithTime[0],
+                pointsWithTime[1],
+                extendMinTime,
+                extendMaxTime,
                 yMin,
                 yMax
               );
-              lineData = [[p1.x, p1.y], [p2.x, p2.y]];
+              linePoints = [p1, p2];
             }
             
             // Render dashed line (no draggable markers on the line endpoints)
             return {
               ...baseOptions,
-              data: lineData,
+              data: toHighchartsData(linePoints),
               type: "line" as const,
               color: "#888888", // Gray for dashed line
               marker: { enabled: false }, // No markers on dashed line
@@ -134,21 +150,19 @@ export function renderDrawingSeries(
           }
           
           // Render boundary lines with extension
-          if (pointsWithIndices.length >= 2) {
-            // Extend the line if it has 2 points, regardless of completion status
-            // For incomplete channels, only extend the first series (base line)
+          if (pointsWithTime.length >= 2) {
             const isComplete = !drawing.isIncomplete;
             const isBaseLine = index === 0; // First series is the base line
             
-            const shouldExtend = chartDataLength > 0 && (isComplete || isBaseLine);
+            const shouldExtend = pointsWithTime.length >= 2 && (isComplete || isBaseLine);
             
             if (shouldExtend) {
               // Extend line to chart boundaries
               const [p1, p2] = extendLineToRange(
-                pointsWithIndices[0],
-                pointsWithIndices[1],
-                0,
-                chartDataLength - 1,
+                pointsWithTime[0],
+                pointsWithTime[1],
+                extendMinTime,
+                extendMaxTime,
                 yMin,
                 yMax
               );
@@ -158,7 +172,7 @@ export function renderDrawingSeries(
                 // Extended line without markers
                 {
                   name: `${drawing.name} - ${index + 1} (line)`,
-                  data: [[p1.x, p1.y], [p2.x, p2.y]],
+                  data: toHighchartsData([p1, p2]),
                   type: "line" as const,
                   color,
                   lineColor: color,
@@ -170,6 +184,7 @@ export function renderDrawingSeries(
                 // Control points with markers (interactive)
                 {
                   ...baseOptions,
+                  data: toHighchartsData(pointsWithTime),
                   type: "scatter" as const,
                   color,
                   marker: createMarker(color, 4, "circle"),
@@ -180,6 +195,7 @@ export function renderDrawingSeries(
               // Incomplete parallel line (not base line) - render normal line
               return {
                 ...baseOptions,
+                data: toHighchartsData(pointsWithTime),
                 type: "line" as const,
                 color,
                 lineColor: color,
@@ -191,6 +207,7 @@ export function renderDrawingSeries(
             // Incomplete channel - render first point as scatter
             return {
               ...baseOptions,
+              data: toHighchartsData(pointsWithTime),
               type: "scatter" as const,
               color,
               marker: createMarker(color, 4, "circle"),
@@ -202,14 +219,15 @@ export function renderDrawingSeries(
           // Horizontal line - extends across entire chart at a fixed y-value
           if (s.points.length >= 1) {
             const yValue = s.points[0].y;
+
+            const start = extendMinTime;
+            const end = extendMaxTime;
             
-            // Use a line that spans the entire x-axis range with extra extension
-            // This approach ensures the line always extends beyond visible area
             return {
               name: drawing.name,
               data: [
-                [-Number.MAX_SAFE_INTEGER, yValue], 
-                [Number.MAX_SAFE_INTEGER, yValue]
+                [start * 1000, yValue],
+                [end * 1000, yValue]
               ],
               type: "line" as const,
               color,
@@ -241,6 +259,7 @@ export function renderDrawingSeries(
           const symbol = drawing.type === "dot" ? "circle" : drawing.type;
           return {
             ...baseOptions,
+            data: toHighchartsData(pointsWithTime),
             type: "scatter" as const,
             color,
             marker: createMarker(color, 6, symbol),

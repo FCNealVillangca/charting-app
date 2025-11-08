@@ -8,25 +8,158 @@ export function timestampToIndex(timestamp: number, chartData: DataPoint[]): num
   return chartData.findIndex(d => d.time === timestamp);
 }
 
+const INDEX_THRESHOLD = 1e5;
+const MILLISECOND_THRESHOLD = 1e10;
+
 /**
- * Convert index to timestamp
- * Returns null if index out of bounds
+ * Estimate the typical spacing between data points (in seconds)
  */
-export function indexToTimestamp(index: number, chartData: DataPoint[]): number | null {
-  if (index < 0 || index >= chartData.length) return null;
-  return chartData[index].time;
+function estimateTimeStep(chartData: DataPoint[]): number {
+  if (chartData.length < 2) {
+    return 60; // fallback to 1 minute
+  }
+
+  let minDelta = Number.POSITIVE_INFINITY;
+  const sampleCount = Math.min(chartData.length - 1, 10);
+
+  for (let i = 1; i <= sampleCount; i += 1) {
+    const delta = chartData[i].time - chartData[i - 1].time;
+    if (delta > 0 && delta < minDelta) {
+      minDelta = delta;
+    }
+  }
+
+  return Number.isFinite(minDelta) ? minDelta : 60;
 }
 
 /**
- * Find nearest timestamp to a given index (rounded)
- * Returns null if chartData is empty or index is way out of bounds
+ * Find the index of the data point with timestamp closest to the target (seconds)
  */
-export function indexToNearestTimestamp(index: number, chartData: DataPoint[]): number | null {
+export function findNearestIndexByTimestamp(
+  chartData: DataPoint[],
+  targetTimestamp: number
+): number {
+  if (!Number.isFinite(targetTimestamp) || chartData.length === 0) {
+    return -1;
+  }
+
+  let left = 0;
+  let right = chartData.length - 1;
+
+  if (targetTimestamp <= chartData[left].time) return left;
+  if (targetTimestamp >= chartData[right].time) return right;
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+    const midTime = chartData[mid].time;
+
+    if (midTime === targetTimestamp) return mid;
+
+    if (midTime < targetTimestamp) {
+      left = mid + 1;
+    } else {
+      right = mid - 1;
+    }
+  }
+
+  const higherIndex = Math.min(left, chartData.length - 1);
+  const lowerIndex = Math.max(higherIndex - 1, 0);
+
+  const higherTime = chartData[higherIndex].time;
+  const lowerTime = chartData[lowerIndex].time;
+
+  return Math.abs(higherTime - targetTimestamp) < Math.abs(targetTimestamp - lowerTime)
+    ? higherIndex
+    : lowerIndex;
+}
+
+const clampIndex = (value: number, max: number) =>
+  Math.max(0, Math.min(max, Math.round(value)));
+
+function timestampFromIndexLike(indexLike: number, chartData: DataPoint[]): number | null {
   if (chartData.length === 0) return null;
-  
-  // Clamp index to valid range
-  const clampedIndex = Math.max(0, Math.min(chartData.length - 1, Math.round(index)));
-  return chartData[clampedIndex].time;
+  const clamped = clampIndex(indexLike, chartData.length - 1);
+  return chartData[clamped].time;
+}
+
+/**
+ * Interpret a stored drawing X value and convert it to a UNIX timestamp in seconds.
+ * Supports legacy index-based values, seconds, or milliseconds.
+ */
+export function drawingXToTimestamp(
+  value: number,
+  chartData: DataPoint[]
+): number | null {
+  if (!Number.isFinite(value) || chartData.length === 0) {
+    return null;
+  }
+
+  const absValue = Math.abs(value);
+
+  if (absValue >= MILLISECOND_THRESHOLD) {
+    // Value already in milliseconds
+    return value / 1000;
+  }
+
+  if (absValue >= INDEX_THRESHOLD) {
+    // Treat as seconds
+    return value;
+  }
+
+  // Treat as index-like legacy value
+  return timestampFromIndexLike(value, chartData);
+}
+
+/**
+ * Convert an axis value to the nearest data point's timestamp (seconds) and index
+ */
+export function axisValueToNearestPoint(
+  axisValue: number,
+  chartData: DataPoint[]
+): { index: number; timestamp: number } | null {
+  if (!Number.isFinite(axisValue) || chartData.length === 0) {
+    return null;
+  }
+
+  const maxIndexLikeValue = chartData.length + 5;
+  if (axisValue >= -5 && axisValue <= maxIndexLikeValue) {
+    const index = Math.max(0, Math.min(chartData.length - 1, Math.round(axisValue)));
+    const timestamp = chartData[index].time;
+    return { index, timestamp };
+  }
+
+  const axisSeconds = axisValue > 1e10 ? axisValue / 1000 : axisValue;
+  const index = findNearestIndexByTimestamp(chartData, axisSeconds);
+
+  if (index === -1) {
+    return null;
+  }
+
+  return {
+    index,
+    timestamp: chartData[index].time,
+  };
+}
+
+/**
+ * Convert an axis delta (difference between two axis values) to seconds
+ */
+export function axisDeltaToSeconds(
+  axisDelta: number,
+  chartData: DataPoint[]
+): number {
+  if (!Number.isFinite(axisDelta)) {
+    return 0;
+  }
+
+  const absDelta = Math.abs(axisDelta);
+
+  if (absDelta === 0) return 0;
+  if (absDelta > 1e10) return absDelta / 1000;
+  if (absDelta > 1e5) return absDelta;
+
+  const step = estimateTimeStep(chartData);
+  return absDelta * step;
 }
 
 /**

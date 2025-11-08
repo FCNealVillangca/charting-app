@@ -1,10 +1,26 @@
 import Highcharts from "highcharts";
 import type { DataPoint, Drawing } from "./chart-types";
 import { handleNoneTool, handleShapeTool, handleLineTool, handleChannelTool, handleHLineTool } from "./chart-tools";
-import { indexToNearestTimestamp } from "./chart-utils";
+import { axisValueToNearestPoint, axisDeltaToSeconds } from "./chart-utils";
 
 // Simple debounce to avoid multiple alerts in quick succession
 let lastEndAlertTime = 0;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
+
+const getBaseSpacing = (chartData: DataPoint[]): number =>
+  chartData.length > 1 ? Math.max(chartData[1].time - chartData[0].time, 1) : 60;
+
+const computeXToleranceSeconds = (
+  axisDelta: number,
+  chartData: DataPoint[]
+): number => {
+  const baseSpacing = getBaseSpacing(chartData);
+  const raw = axisDeltaToSeconds(axisDelta, chartData);
+  const fallback = baseSpacing / 2;
+  return clamp(raw > 0 ? raw : fallback, baseSpacing / 4, baseSpacing * 2);
+};
 
 /**
  * Check if the leftmost/oldest data is visible in the chart view
@@ -98,16 +114,23 @@ export function createHandleMouseMove(
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Show tooltip
     const xValue = xAxis.toValue(x);
-    const index = Math.round(xValue);
-    if (index >= 0 && index < chartData.length) {
-      const dataPoint = chartData[index];
+    const nearestPoint = axisValueToNearestPoint(xValue, chartData);
+
+    if (nearestPoint) {
+      const dataPoint = chartData[nearestPoint.index];
       setTooltipData({
         visible: true,
         x: rect.left + 10, // Upper left of chart
         y: rect.top + 10,
         data: dataPoint,
+      });
+    } else {
+      setTooltipData({
+        visible: false,
+        x: 0,
+        y: 0,
+        data: null,
       });
     }
 
@@ -119,13 +142,14 @@ export function createHandleMouseMove(
       // Check if hovering over a point using pixel-based tolerance converted to axis units
       const yValue = yAxis.toValue(y);
       const pixelTolerance = 6; // pixels
-      // Clamp X tolerance in axis units to avoid selecting points far away horizontally when zoomed out
-      const xTol = Math.min(
-        Math.abs(xAxis.toValue(x + pixelTolerance) - xAxis.toValue(x)),
-        0.5
-      );
+      const axisDelta = xAxis.toValue(x + pixelTolerance) - xValue;
+      const xToleranceSeconds = computeXToleranceSeconds(axisDelta, chartData);
       const yTol = Math.abs(yAxis.toValue(y + pixelTolerance) - yAxis.toValue(y));
-      const hoveringPoint = findPoints(xValue, yValue, xTol, yTol);
+      const timestampForHitTest = nearestPoint?.timestamp ?? null;
+      const hoveringPoint =
+        timestampForHitTest === null
+          ? null
+          : findPoints(timestampForHitTest, yValue, xToleranceSeconds, yTol);
       
       if (hoveringPoint) {
         // Hovering over a draggable point
@@ -190,13 +214,13 @@ export function createHandleMouseUp(
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Convert to axis values (xValue is index)
+    // Convert to axis values
     const xValue = xAxis.toValue(x);
     const yValue = yAxis.toValue(y);
     
-    // Convert index to timestamp
-    const timestamp = indexToNearestTimestamp(xValue, chartData);
-    if (timestamp === null) return;
+    const nearestPoint = axisValueToNearestPoint(xValue, chartData);
+    if (!nearestPoint) return;
+    const timestamp = nearestPoint.timestamp;
 
     // Update the selected point position and deselect (store timestamp in x)
     updatePoint(
@@ -251,23 +275,20 @@ export function createHandleMouseDown(
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Convert to axis values (xValue is index)
+    // Convert to axis values
     const xValue = xAxis.toValue(x);
     const yValue = yAxis.toValue(y);
     
-    // Convert index to timestamp
-    const timestamp = indexToNearestTimestamp(xValue, chartData);
-    if (timestamp === null) return;
+    const nearestPoint = axisValueToNearestPoint(xValue, chartData);
+    if (!nearestPoint) return;
+    const timestamp = nearestPoint.timestamp;
 
     // Check if clicking on a draggable point (for "none" tool mode) using pixel-based tolerance
     const pixelTolerance = 6; // pixels
-    // Clamp X tolerance in axis units to avoid selecting points far away horizontally when zoomed out
-    const xTol = Math.min(
-      Math.abs(xAxis.toValue(x + pixelTolerance) - xAxis.toValue(x)),
-      0.5
-    );
+    const axisDelta = xAxis.toValue(x + pixelTolerance) - xValue;
+    const xToleranceSeconds = computeXToleranceSeconds(axisDelta, chartData);
     const yTol = Math.abs(yAxis.toValue(y + pixelTolerance) - yAxis.toValue(y));
-    const clickedPoint = findPoints(xValue, yValue, xTol, yTol);
+    const clickedPoint = findPoints(timestamp, yValue, xToleranceSeconds, yTol);
     
     // ALWAYS prevent default zoom behavior when:
     // 1. Clicking on a draggable point (to drag it)
@@ -284,7 +305,7 @@ export function createHandleMouseDown(
       yy: number,
       _xT?: number,
       _yT?: number
-    ) => findPoints(xx, yy, xTol, yTol);
+    ) => findPoints(xx, yy, xToleranceSeconds, yTol);
 
     const toolHandlerParams = {
       timestamp,  // Changed: Pass timestamp instead of xValue (index)
