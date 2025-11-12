@@ -24,7 +24,10 @@ export interface Drawing {
   id: number | null;
   name: string;
   type: 'dot' | 'triangle' | 'square' | 'circle' | 'diamond' | 'line' | 'trendline' | 'fibonacci' | 'channel' | 'rectangle' | 'hline';
-  color?: string;
+  style: {
+    color: string;
+    seriesColors?: Record<string, string>; // Add this line
+  };
   series: Series[];
   isIncomplete?: boolean;
 }

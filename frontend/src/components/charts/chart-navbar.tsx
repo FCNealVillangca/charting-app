@@ -1,7 +1,7 @@
 import React, { useState, useContext, useMemo } from "react";
 import ChartPairSelector from "./chart-pair-selector";
 import { ChartContext } from "./chart-context";
-import DrawingEditorDialog from "./DrawingEditorDialog";
+import ChartSettingDialog from "./chart-setting-dialog";
 
 interface ChartNavbarProps {
   currentPair?: string;
@@ -80,7 +80,7 @@ const ChartNavbar: React.FC<ChartNavbarProps> = ({
               <span className="text-gray-500">{selectedDrawing.name}</span>
               <div
                 className="w-5 h-5 border-2 border-white rounded shadow-sm"
-                style={{ backgroundColor: selectedDrawing.color }}
+                style={{ backgroundColor: selectedDrawing?.style?.color }}
               />
             </div>
           </>
@@ -101,7 +101,7 @@ const ChartNavbar: React.FC<ChartNavbarProps> = ({
       />
 
       {selectedDrawing && (
-        <DrawingEditorDialog
+        <ChartSettingDialog
           isOpen={isDrawingDialogOpen}
           onClose={() => setIsDrawingDialogOpen(false)}
           drawing={selectedDrawing}

@@ -1,31 +1,77 @@
 import React, { useState, useEffect } from "react";
 import type { Drawing } from "./chart-types";
 
-interface DrawingEditorDialogProps {
+interface ChartSettingDialogProps {
   isOpen: boolean;
   onClose: () => void;
   drawing: Drawing | null;
   onSave: (drawingId: number | null, updates: Partial<Drawing>) => void;
 }
 
-const DrawingEditorDialog: React.FC<DrawingEditorDialogProps> = ({
+const ChartSettingDialog: React.FC<ChartSettingDialogProps> = ({
   isOpen,
   onClose,
   drawing,
   onSave,
 }) => {
-  const [color, setColor] = useState(drawing?.color || "#4caf50");
+  const [colors, setColors] = useState<Record<string, string>>(() => {
+    if (drawing?.series) {
+      return drawing.series.reduce((acc, series) => {
+        if (series.id && typeof series.id === 'string') {
+          acc[series.id] = series.style?.color || "#4caf50";
+        }
+        return acc;
+      }, {} as Record<string, string>);
+    }
+    return { default: drawing?.style?.color || "#4caf50" };
+  });
 
   // Update color when drawing changes
   useEffect(() => {
     if (drawing) {
-      setColor(drawing.color);
+      // The setColors updater function is called, but the effect itself returns nothing.
+      setColors(prev => {
+        if (drawing.series) {
+          return drawing.series.reduce((acc, series) => {
+            if (series.id && typeof series.id === 'string') {
+              acc[series.id] = series.style?.color || "#4caf50";
+            }
+            return acc;
+          }, {} as Record<string, string>);
+        }
+        return { "default": drawing.style?.color || "#4caf50" };
+      });
     }
+    // Explicitly return nothing (or undefined) from the effect callback.
+    // This is implicitly done, but made explicit for clarity.
+    return undefined;
   }, [drawing]);
 
   const handleSave = () => {
     if (drawing) {
-      onSave(drawing.id, { color });
+      const updates: Partial<Drawing> = {
+        style: {
+          color: drawing.style?.color || "#4caf50",
+          seriesColors: {}
+        }
+      };
+      
+      if (drawing.series) {
+        const seriesColors: Record<string, string> = {};
+        drawing.series.forEach(series => {
+          if (series.id && typeof series.id === 'string' && colors[series.id]) {
+            seriesColors[series.id] = colors[series.id];
+          }
+        });
+        updates.style = { ...updates.style, seriesColors };
+      } else {
+        updates.style = { 
+          ...updates.style, 
+          seriesColors: { default: colors.default || "#4caf50" } 
+        };
+      }
+      
+      onSave(drawing.id, updates);
       onClose();
     }
   };
@@ -105,38 +151,49 @@ const DrawingEditorDialog: React.FC<DrawingEditorDialogProps> = ({
               marginBottom: "8px",
             }}
           >
-            Color
+            Color Settings
           </label>
-          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-            <input
-              type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              style={{
-                width: "60px",
-                height: "40px",
-                border: "1px solid #d1d5db",
-                borderRadius: "6px",
-                cursor: "pointer",
-              }}
-            />
-            <input
-              type="text"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              style={{
-                flex: 1,
-                padding: "8px 12px",
-                borderRadius: "6px",
-                border: "1px solid #d1d5db",
-                backgroundColor: "#f9fafb",
-                color: "#111827",
+          {Object.entries(colors).map(([seriesId, colorValue]) => (
+            <div key={seriesId} style={{ display: "flex", gap: "12px", alignItems: "center", marginBottom: "16px" }}>
+              <label style={{
                 fontSize: "14px",
-                fontFamily: "monospace",
-                outline: "none",
-              }}
-            />
-          </div>
+                fontWeight: "500",
+                color: "#374151",
+                flex: 1,
+                textAlign: "right"
+              }}>
+                {seriesId === "default" ? "Main Line" : seriesId}
+              </label>
+              <input
+                type="color"
+                value={colorValue}
+                onChange={(e) => setColors(prev => ({ ...prev, [seriesId]: e.target.value }))}
+                style={{
+                  width: "60px",
+                  height: "40px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                }}
+              />
+              <input
+                type="text"
+                value={colorValue}
+                onChange={(e) => setColors(prev => ({ ...prev, [seriesId]: e.target.value }))}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid #d1d5db",
+                  backgroundColor: "#f9fafb",
+                  color: "#111827",
+                  fontSize: "14px",
+                  fontFamily: "monospace",
+                  outline: "none",
+                }}
+              />
+            </div>
+          ))}
         </div>
 
         <div
@@ -186,5 +243,4 @@ const DrawingEditorDialog: React.FC<DrawingEditorDialogProps> = ({
   );
 };
 
-export default DrawingEditorDialog;
-
+export default ChartSettingDialog;

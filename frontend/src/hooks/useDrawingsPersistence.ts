@@ -169,7 +169,6 @@ export function useDrawingsPersistence({
               // Update tracking with current state (IDs stay the same now)
               lastSavedState.current.set(drawing.id, JSON.stringify(drawing));
 
-              console.log('Updated drawing with ID:', drawing.id);
             } catch (error) {
               console.error(`Error updating drawing ${drawing.id}:`, error);
             } finally {
