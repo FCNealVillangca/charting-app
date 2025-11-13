@@ -30,7 +30,7 @@ const ChartSettingDialog: React.FC<ChartSettingDialogProps> = ({
   useEffect(() => {
     if (drawing) {
       // The setColors updater function is called, but the effect itself returns nothing.
-      setColors(prev => {
+      setColors(_ => {
         if (drawing.series) {
           return drawing.series.reduce((acc, series) => {
             if (series.id && typeof series.id === 'string') {
@@ -63,10 +63,11 @@ const ChartSettingDialog: React.FC<ChartSettingDialogProps> = ({
             seriesColors[series.id] = colors[series.id];
           }
         });
-        updates.style = { ...updates.style, seriesColors };
+        // Merge into drawing.style to preserve any existing style fields and avoid spreading possibly-undefined updates.style
+        updates.style = { ...(drawing.style || {}), seriesColors };
       } else {
         updates.style = { 
-          ...updates.style, 
+          ...(drawing.style || {}), 
           seriesColors: { default: colors.default || "#4caf50" } 
         };
       }
