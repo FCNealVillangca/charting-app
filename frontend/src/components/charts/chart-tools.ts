@@ -71,6 +71,7 @@ export function handleShapeTool(
     id: null,
     name: `Point ${drawingNumber}`,
     type: toolType as any,
+    style: { color: "#000000" },
     series: [
       {
         id: null,
@@ -118,6 +119,7 @@ export function handleLineTool(params: ToolHandlerParams): void {
       id: null,
       name: `Line ${drawings.filter((d) => d.type === "line").length + 1}`,
       type: "line" as const,
+      style: { color: "#000000" },
       series: [
         {
           id: null,
@@ -185,6 +187,7 @@ export function handleChannelTool(params: ToolHandlerParams): void {
       id: null,
       name: `Channel ${drawings.filter((d) => d.type === "channel").length + 1}`,
       type: "channel" as const,
+      style: { color: "#000000" },
       series: [
         {
           id: null,
@@ -317,6 +320,7 @@ export function handleHLineTool(params: ToolHandlerParams): void {
     id: null,
     name: `H-Line ${drawingNumber}`,
     type: "hline" as const,
+    style: { color: "#000000" },
     series: [
       {
         id: null,

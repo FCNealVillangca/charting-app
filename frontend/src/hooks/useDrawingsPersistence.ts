@@ -35,7 +35,6 @@ export function useDrawingsPersistence({
   // Load drawings on mount
   useEffect(() => {
     if (!enabled || !pair) return;
-    
     // Prevent double-loading for the same pair
     if (hasLoadedForPair.current === pair) return;
 
@@ -113,7 +112,7 @@ export function useDrawingsPersistence({
           // New complete drawing - persist to backend first
           try {
             setIsLoading(true);
-            const color = (drawing.series[0] as any)?.style?.color || drawing.color || '#000000';
+            const color = (drawing.series[0] as any)?.style?.color || '#000000';
             const createdDrawing = await apiClient.createDrawing({
               name: drawing.name,
               type: drawing.type,
@@ -158,7 +157,7 @@ export function useDrawingsPersistence({
           if (hasChanged) {
             try {
               setIsLoading(true);
-              const color = (drawing.series[0] as any)?.style?.color || drawing.color || '#000000';
+              const color = (drawing.series[0] as any)?.style?.color || '#000000';
               await apiClient.updateDrawing(drawing.id, {
                 name: drawing.name,
                 color,
