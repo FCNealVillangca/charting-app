@@ -145,11 +145,32 @@ class DrawingService:
     
     def _update_points_for_series(self, db: Session, series_model: SeriesModel, points_data: list):
         """Update points for an existing series"""
+        # First, collect all existing point IDs for this series
+        existing_points = db.query(PointModel.id).filter(
+            PointModel.series_id == series_model.id
+        ).all()
+        existing_point_ids = {point.id for point in existing_points}
+        
+        updated_point_ids = set()
+        
+        # Update or create points based on the new data
         for point_idx, point_data in enumerate(points_data):
-            if point_data.id is not None:
+            if point_data.id is not None and point_data.id in existing_point_ids:
+                # Update existing point
                 self._update_existing_point(db, series_model.id, point_data, point_idx)
+                updated_point_ids.add(point_data.id)
             else:
-                self._create_new_point(db, series_model.id, point_data, point_idx)
+                # Create new point (or point ID doesn't exist in DB)
+                new_point = self._create_new_point(db, series_model.id, point_data, point_idx)
+                updated_point_ids.add(new_point.id)
+        
+        # Delete any points that were not in the update data
+        points_to_delete = existing_point_ids - updated_point_ids
+        if points_to_delete:
+            db.query(PointModel).filter(
+                PointModel.id.in_(points_to_delete),
+                PointModel.series_id == series_model.id
+            ).delete(synchronize_session=False)
     
     def _update_existing_point(self, db: Session, series_id: int, point_data, point_idx: int):
         """Update an existing point"""
@@ -163,7 +184,8 @@ class DrawingService:
             point_model.y = point_data.y
             point_model.order_index = point_idx
         else:
-            # Point with this ID doesn't exist, create it
+            # This shouldn't happen if called correctly, but handle gracefully
+            logger.warning(f"Point with ID {point_data.id} not found in series {series_id}, creating new point")
             self._create_new_point(db, series_id, point_data, point_idx)
     
     def _create_new_point(self, db: Session, series_id: int, point_data, point_idx: int):
@@ -175,6 +197,8 @@ class DrawingService:
             order_index=point_idx
         )
         db.add(point_model)
+        # Return the model so we can get the ID after flush
+        return point_model
     
     # =============================================================================
     # PUBLIC METHODS
@@ -205,7 +229,7 @@ class DrawingService:
             db.close()
     
     def get_drawing_by_id(self, drawing_id: int) -> Optional[Drawing]:
-        """Get a single drawing by ID"""
+        """Get a single drawing by ID - Fixed to include proper exception handling"""
         db = self._get_db()
         try:
             drawing_model = db.query(DrawingModel).options(
@@ -217,6 +241,9 @@ class DrawingService:
                 return None
             
             return self._drawing_model_to_schema(drawing_model)
+        except Exception as e:
+            logger.error(f"Error in get_drawing_by_id: {str(e)}")
+            raise
         finally:
             db.close()
     
@@ -232,10 +259,13 @@ class DrawingService:
             # Create drawing (ID will be auto-generated)
             # Determine drawing color from first series style (fallback to provided or black)
             first_series_style = None
-            try:
-                first_series_style = drawing.series[0].style if drawing.series else None
-            except Exception:
+            # FIXED: Use safe getattr instead of direct list access to avoid IndexError
+            if drawing.series:
+                first_series = drawing.series[0]
+                first_series_style = getattr(first_series, 'style', None)
+            else:
                 first_series_style = None
+                
             derived_color = None
             if isinstance(first_series_style, dict):
                 derived_color = first_series_style.get('color')
@@ -264,14 +294,13 @@ class DrawingService:
                 db.flush()  # ensure series_model.id
 
                 for point_idx, point_data in enumerate(series_data.points):
-                    db.add(
-                        PointModel(
-                            series_id=series_model.id,
-                            x=point_data.x,
-                            y=point_data.y,
-                            order_index=point_idx,
-                        )
+                    point_model = PointModel(
+                        series_id=series_model.id,
+                        x=point_data.x,
+                        y=point_data.y,
+                        order_index=point_idx,
                     )
+                    db.add(point_model)
             
             db.commit()
             db.refresh(drawing_model)
