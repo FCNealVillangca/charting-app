@@ -2,6 +2,14 @@ from pydantic import BaseModel, Field
 from typing import Optional, Any
 
 
+class ChartBounds(BaseModel):
+    """Chart bounds for viewport calculations - NOT saved to DB"""
+    minX: float
+    maxX: float
+    minY: float
+    maxY: float
+
+
 class Point(BaseModel):
     """Point in a series"""
     id: Optional[int] = None
@@ -52,11 +60,13 @@ class DrawingUpdate(BaseModel):
 class DrawingCreateRequest(BaseModel):
     """Request wrapper for creating a drawing"""
     drawing: DrawingCreate
+    chartBounds: Optional[ChartBounds] = None
 
 
 class DrawingUpdateRequest(BaseModel):
     """Request wrapper for updating a drawing"""
     drawing: DrawingUpdate
+    chartBounds: Optional[ChartBounds] = None
 
 
 class DrawingsResponse(BaseModel):

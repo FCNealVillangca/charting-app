@@ -6,7 +6,7 @@ from app.models.drawing import Drawing as DrawingModel
 from app.models.series import Series as SeriesModel
 from app.models.point import Point as PointModel
 from app.models.pair import Pair as PairModel
-from app.schemas.drawing import Drawing, DrawingCreate, DrawingUpdate
+from app.schemas.drawing import Drawing, DrawingCreate, DrawingUpdate, ChartBounds
 
 
 logger = logging.getLogger(__name__)
@@ -220,9 +220,14 @@ class DrawingService:
         finally:
             db.close()
     
-    def create_drawing(self, drawing: DrawingCreate) -> Drawing:
+    def create_drawing(self, drawing: DrawingCreate, chart_bounds: Optional[ChartBounds] = None) -> Drawing:
         """Create a new drawing with auto-generated IDs"""
         logger.debug(f"create_drawing pair={drawing.pair} type={drawing.type} series_count={len(drawing.series)}")
+        
+        # Access chart bounds from frontend (NOT saved to DB - just for calculations)
+        if chart_bounds:
+            print(f"📊 CHART BOUNDS IN SERVICE: minX={chart_bounds.minX}, maxX={chart_bounds.maxX}, minY={chart_bounds.minY}, maxY={chart_bounds.maxY}")
+            # TODO: Use chart_bounds for your trend channel extension logic here!
         
         db = self._get_db()
         try:
@@ -282,8 +287,14 @@ class DrawingService:
         finally:
             db.close()
     
-    def update_drawing(self, drawing_id: int, updates: DrawingUpdate) -> Optional[Drawing]:
+    def update_drawing(self, drawing_id: int, updates: DrawingUpdate, chart_bounds: Optional[ChartBounds] = None) -> Optional[Drawing]:
         """Update an existing drawing"""
+        
+        # Access chart bounds from frontend (NOT saved to DB - just for calculations)
+        if chart_bounds:
+            print(f"📊 CHART BOUNDS IN SERVICE (UPDATE): minX={chart_bounds.minX}, maxX={chart_bounds.maxX}, minY={chart_bounds.minY}, maxY={chart_bounds.maxY}")
+            # TODO: Use chart_bounds for your trend channel extension logic here!
+        
         db = self._get_db()
         try:
             drawing_model = db.query(DrawingModel).options(

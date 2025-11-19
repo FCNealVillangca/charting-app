@@ -57,17 +57,23 @@ async def create_drawing(request: DrawingCreateRequest):
     Create a new drawing.
     """
     drawing = request.drawing
+    chart_bounds = request.chartBounds
+    
     logger.info(f"POST /drawings/ called")
     logger.info(f"Received drawing data: {drawing.model_dump()}")
     logger.info(f"Drawing name: {drawing.name}, type: {drawing.type}, color: {drawing.color}, pair: {drawing.pair}")
     logger.info(f"Number of series: {len(drawing.series)}")
+    
+    if chart_bounds:
+        logger.info(f"📊 Chart Bounds: minX={chart_bounds.minX}, maxX={chart_bounds.maxX}, minY={chart_bounds.minY}, maxY={chart_bounds.maxY}")
+    
     for i, series in enumerate(drawing.series):
         logger.info(f"Series {i}: id={series.id}, points count={len(series.points)}")
         for j, point in enumerate(series.points):
             logger.info(f"  Point {j}: id={point.id}, x={point.x}, y={point.y}")
     
     try:
-        created_drawing = drawing_service.create_drawing(drawing)
+        created_drawing = drawing_service.create_drawing(drawing, chart_bounds)
         logger.info(f"Successfully created drawing with id={created_drawing.id}")
         return created_drawing
     except ValueError as e:
@@ -87,7 +93,12 @@ async def update_drawing(drawing_id: int, request: DrawingUpdateRequest):
     """
     try:
         updates = request.drawing
-        updated_drawing = drawing_service.update_drawing(drawing_id, updates)
+        chart_bounds = request.chartBounds
+        
+        if chart_bounds:
+            logger.info(f"📊 Chart Bounds (UPDATE): minX={chart_bounds.minX}, maxX={chart_bounds.maxX}, minY={chart_bounds.minY}, maxY={chart_bounds.maxY}")
+        
+        updated_drawing = drawing_service.update_drawing(drawing_id, updates, chart_bounds)
         
         if not updated_drawing:
             raise HTTPException(status_code=404, detail=f"Drawing with id {drawing_id} not found")

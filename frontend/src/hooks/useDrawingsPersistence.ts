@@ -9,6 +9,7 @@ interface UseDrawingsPersistenceOptions {
   addDrawing: (drawing: Drawing) => void;
   replaceDrawing: (oldDrawing: Drawing, newDrawing: Drawing) => void;
   setIsLoading: (loading: boolean) => void;
+  chartBounds?: { minX: number; maxX: number; minY: number; maxY: number };
 }
 
 /**
@@ -23,6 +24,7 @@ export function useDrawingsPersistence({
   addDrawing,
   replaceDrawing,
   setIsLoading,
+  chartBounds,
 }: UseDrawingsPersistenceOptions) {
   // Track which drawings have been saved (server IDs only)
   const savedDrawingIds = useRef<Set<number>>(new Set());
@@ -112,6 +114,7 @@ export function useDrawingsPersistence({
           // New complete drawing - persist to backend first
           try {
             setIsLoading(true);
+            console.log('📊 Creating drawing with chartBounds:', chartBounds);
             const color = (drawing.series[0] as any)?.style?.color || '#000000';
             const createdDrawing = await apiClient.createDrawing({
               name: drawing.name,
@@ -120,6 +123,7 @@ export function useDrawingsPersistence({
               isIncomplete: drawing.isIncomplete,
               series: drawing.series as any,
               pair: pair.toUpperCase(),
+              chartBounds, // Send current chart bounds to backend
             });
 
             // Update the local drawing's ID with the server ID (mutate in place)
@@ -157,12 +161,14 @@ export function useDrawingsPersistence({
           if (hasChanged) {
             try {
               setIsLoading(true);
+              console.log('📊 Updating drawing with chartBounds:', chartBounds);
               const color = (drawing.series[0] as any)?.style?.color || '#000000';
               await apiClient.updateDrawing(drawing.id, {
                 name: drawing.name,
                 color,
                 isIncomplete: drawing.isIncomplete,
                 series: drawing.series as any,
+                chartBounds, // Send current chart bounds to backend
               });
 
               // Update tracking with current state (IDs stay the same now)

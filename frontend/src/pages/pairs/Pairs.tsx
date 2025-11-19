@@ -19,6 +19,21 @@ function Pairs() {
   // Get chart context for drawings
   const { drawings, addDrawing, replaceDrawing, setIsLoading } = useChart();
   
+  // Calculate chart bounds from current dataset
+  const chartBounds = useMemo(() => {
+    if (data.length === 0) return undefined;
+    
+    const times = data.map(d => d.time);
+    const prices = data.flatMap(d => [d.high, d.low]);
+    
+    return {
+      minX: Math.min(...times),
+      maxX: Math.max(...times),
+      minY: Math.min(...prices),
+      maxY: Math.max(...prices),
+    };
+  }, [data]);
+  
   // Auto-save drawings to backend (also handles loading on mount)
   useDrawingsPersistence({
     pair: currentPair,
@@ -27,6 +42,7 @@ function Pairs() {
     addDrawing,
     replaceDrawing,
     setIsLoading,
+    chartBounds,
   });
 
   // Initial data fetch
