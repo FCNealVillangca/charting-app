@@ -49,6 +49,16 @@ class DrawingUpdate(BaseModel):
     isIncomplete: Optional[bool] = None
 
 
+class DrawingCreateRequest(BaseModel):
+    """Request wrapper for creating a drawing"""
+    drawing: DrawingCreate
+
+
+class DrawingUpdateRequest(BaseModel):
+    """Request wrapper for updating a drawing"""
+    drawing: DrawingUpdate
+
+
 class DrawingsResponse(BaseModel):
     """Response with list of drawings"""
     drawings: list[Drawing]

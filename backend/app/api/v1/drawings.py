@@ -2,7 +2,14 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 import traceback
 import logging
-from app.schemas.drawing import Drawing, DrawingCreate, DrawingUpdate, DrawingsResponse
+from app.schemas.drawing import (
+    Drawing, 
+    DrawingCreate, 
+    DrawingUpdate, 
+    DrawingCreateRequest,
+    DrawingUpdateRequest,
+    DrawingsResponse
+)
 from app.services.drawing_service import drawing_service
 
 
@@ -45,10 +52,11 @@ async def get_drawing(drawing_id: int):
 
 
 @router.post("/", response_model=Drawing, status_code=201)
-async def create_drawing(drawing: DrawingCreate):
+async def create_drawing(request: DrawingCreateRequest):
     """
     Create a new drawing.
     """
+    drawing = request.drawing
     logger.info(f"POST /drawings/ called")
     logger.info(f"Received drawing data: {drawing.model_dump()}")
     logger.info(f"Drawing name: {drawing.name}, type: {drawing.type}, color: {drawing.color}, pair: {drawing.pair}")
@@ -73,11 +81,12 @@ async def create_drawing(drawing: DrawingCreate):
 
 
 @router.put("/{drawing_id}", response_model=Drawing)
-async def update_drawing(drawing_id: int, updates: DrawingUpdate):
+async def update_drawing(drawing_id: int, request: DrawingUpdateRequest):
     """
     Update an existing drawing.
     """
     try:
+        updates = request.drawing
         updated_drawing = drawing_service.update_drawing(drawing_id, updates)
         
         if not updated_drawing:
