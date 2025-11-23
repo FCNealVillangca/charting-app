@@ -12,7 +12,6 @@ class Drawing(Base):
     type = Column(String, nullable=False)  # dot, line, channel, hline, etc.
     color = Column(String, nullable=False)
     drawing_metadata = Column(JSON, nullable=True)
-    is_incomplete = Column(Boolean, nullable=False, default=False)
     pair_id = Column(Integer, ForeignKey("pairs.id"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

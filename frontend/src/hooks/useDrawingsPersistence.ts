@@ -120,7 +120,6 @@ export function useDrawingsPersistence({
               name: drawing.name,
               type: drawing.type,
               color,
-              isIncomplete: drawing.isIncomplete,
               series: drawing.series as any,
               pair: pair.toUpperCase(),
               chartBounds, // Send current chart bounds to backend
@@ -166,7 +165,6 @@ export function useDrawingsPersistence({
               await apiClient.updateDrawing(drawing.id, {
                 name: drawing.name,
                 color,
-                isIncomplete: drawing.isIncomplete,
                 series: drawing.series as any,
                 chartBounds, // Send current chart bounds to backend
               });

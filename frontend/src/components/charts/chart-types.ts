@@ -29,7 +29,7 @@ export interface Drawing {
     seriesColors?: Record<string, string>; // Add this line
   };
   series: Series[];
-  isIncomplete?: boolean;
+  isIncomplete?: boolean; // Only used locally in frontend, never sent to server
 }
 
 export interface ChartContextType {

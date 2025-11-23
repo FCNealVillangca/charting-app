@@ -32,7 +32,6 @@ class Drawing(BaseModel):
     type: str = Field(..., description="Type of drawing: dot, line, channel, hline, etc.")
     color: str
     series: list[Series]
-    isIncomplete: Optional[bool] = None
     pair: str = Field(..., description="Trading pair this drawing belongs to")
     
     class Config:
@@ -45,7 +44,6 @@ class DrawingCreate(BaseModel):
     type: str
     series: list[Series]
     color: Optional[str] = None
-    isIncomplete: Optional[bool] = None
     pair: str
 
 
@@ -54,7 +52,6 @@ class DrawingUpdate(BaseModel):
     name: Optional[str] = None
     color: Optional[str] = None
     series: Optional[list[Series]] = None
-    isIncomplete: Optional[bool] = None
 
 
 class DrawingCreateRequest(BaseModel):

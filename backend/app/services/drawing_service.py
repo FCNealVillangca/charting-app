@@ -89,16 +89,12 @@ class DrawingService:
             type=drawing_model.type,
             color=drawing_model.color,
             series=series_list,
-            isIncomplete=bool(getattr(drawing_model, 'is_incomplete', False)),
             pair=drawing_model.pair.symbol,
         )
     
     def _update_basic_drawing_fields(self, drawing_model: DrawingModel, updates: DrawingUpdate):
         """Update basic drawing fields (name, color)."""
         update_data = updates.model_dump(exclude_unset=True, exclude={"series"})
-        # map camelCase to snake_case for DB columns
-        if 'isIncomplete' in update_data:
-            drawing_model.is_incomplete = bool(update_data.pop('isIncomplete'))
         for field, value in update_data.items():
             setattr(drawing_model, field, value)
     
@@ -251,9 +247,6 @@ class DrawingService:
                 color=drawing.color or derived_color or "#000000",
                 pair_id=pair_id
             )
-            # Set incomplete flag if provided
-            if getattr(drawing, 'isIncomplete', None) is not None:
-                drawing_model.is_incomplete = bool(drawing.isIncomplete)
             db.add(drawing_model)
             db.flush()  # Get auto-generated ID
             
