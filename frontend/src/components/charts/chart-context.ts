@@ -10,7 +10,7 @@ import {
   deleteDrawingById,
   completeDrawingById,
   getIncompleteDrawing,
-  recalculateChannelCenterLine,
+  recalculateChannelExtendedLines,
 } from "./chart-utils";
 
 export const ChartContext = createContext<ChartContextType | undefined>(undefined);
@@ -45,61 +45,15 @@ export const ChartProvider: React.FC<{
     setDrawings((prev) => {
       // Find the drawing being updated
       const drawing = prev.find(d => d.id === drawingId);
-      
-      // Check if this is a channel and if we're dragging the center point
-      if (drawing && drawing.type === 'channel') {
-        const centerSeries = drawing.series.find(s => s?.name === 'tlinecenter' || s.points.length === 1);
-        if (centerSeries && centerSeries.id === seriesId) {
-        // Moving the center point - move all boundary points by the same delta
-        const centerPoint = centerSeries?.points.find(p => p.id === pointId);
-        
-        if (centerPoint) {
-          const deltaY = y - centerPoint.y; // Only move vertically
-          
-          // Update all points in all series by deltaY
-          const updated = prev.map(d => {
-            if (d.id === drawingId) {
-              return {
-                ...d,
-                series: d.series.map(s => ({
-                  ...s,
-                  points: s.points.map(p => ({
-                    ...p,
-                    y: p.y + deltaY
-                  }))
-                }))
-              };
-            }
-            return d;
-          });
-          
 
-          return updated;
-        }
-      }
-      }
-      
       // Normal point update
       const updated = updatePointInDrawings(prev, drawingId, seriesId, pointId, x, y);
-      
-      // If this is a channel and we're updating a boundary line (not dashed or center), recalculate dashed line and center
-      if (drawing && drawing.type === 'channel') {
-        const changedSeries = drawing.series.find(s => s.id === seriesId);
-        const isCenter = changedSeries?.name === 'tlinecenter' || changedSeries?.points.length === 1;
-        const isDashed = changedSeries?.name === 'tlinemid';
-        if (!isCenter && !isDashed) {
-        return updated.map(d => {
-          if (d.id === drawingId) {
-            return recalculateChannelCenterLine(d);
-          }
-          return d;
-        });
-        }
-      }
-  
+
+      // No additional recalculation needed for channels
+
       return updated;
     });
-  }, []);
+  }, [chartBounds]);
 
   const findPoints = useCallback((x: number, y: number, xTolerance: number = 10, yTolerance: number = 10): { drawingId: number | null; seriesId: number | null; pointId: number | null } | null => {
     return findLineOrPoint(drawings, x, y, xTolerance, yTolerance);

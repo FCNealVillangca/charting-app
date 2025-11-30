@@ -267,22 +267,13 @@ export async function handleChannelTool(params: ToolHandlerParams): Promise<void
 
         const response = await apiClient.createDrawing(drawingData);
 
-        // Update local drawing with server IDs
-        incompleteDrawing.id = response.id;
-        response.series.forEach((s, i) => {
-          if (incompleteDrawing.series[i]) {
-            incompleteDrawing.series[i].id = s.id;
-            s.points.forEach((p, j) => {
-              if (incompleteDrawing.series[i].points[j]) {
-                incompleteDrawing.series[i].points[j].id = p.id;
-              }
-            });
-          }
-        });
-
-        // Update the drawing with complete server data (including calculated center elements)
+        // Update the drawing with complete server data (including extended lines)
+        // This replaces the local drawing with the full server response which includes all 4 series
         if (params.updateDrawing) {
-          params.updateDrawing(incompleteDrawing.id, { series: response.series });
+          params.updateDrawing(incompleteDrawing.id, { 
+            id: response.id,
+            series: response.series 
+          });
         }
 
         completeDrawing(incompleteDrawing.id);

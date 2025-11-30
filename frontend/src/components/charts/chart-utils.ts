@@ -473,69 +473,79 @@ export const extendLineToRange = (
 };
 
 /**
- * Recalculates the dashed line and center point for a channel drawing based on boundary lines
+ * Recalculates the extended lines for a channel drawing based on boundary lines and chart bounds
  */
-export const recalculateChannelCenterLine = (
-  drawing: Drawing
+export const recalculateChannelExtendedLines = (
+  drawing: Drawing,
+  chartBounds?: { minX: number; maxX: number; minY: number; maxY: number }
 ): Drawing => {
-  if (drawing.type !== 'channel') return drawing;
-  
+  if (drawing.type !== 'channel' || !chartBounds) return drawing;
+
   const baseSeries = drawing.series[0];
   const parallelSeries = drawing.series[1];
-  const dashedSeries = drawing.series[2];
-  const centerSeries = drawing.series[3];
-  
-  // Need both boundary lines, dashed line, and center point to exist
-  if (!baseSeries || !parallelSeries || !dashedSeries || !centerSeries) {
+  const extendedBaseSeries = drawing.series[2];
+  const extendedParallelSeries = drawing.series[3];
+
+  // Need both boundary lines and extended series to exist
+  if (!baseSeries || !parallelSeries || !extendedBaseSeries || !extendedParallelSeries) {
     return drawing;
   }
-  
+
   if (baseSeries.points.length < 2 || parallelSeries.points.length < 2) {
     return drawing;
   }
-  
-  // Calculate new dashed line (midpoints between boundary lines)
-  const dashedStart = {
-    x: (baseSeries.points[0].x + parallelSeries.points[0].x) / 2,
-    y: (baseSeries.points[0].y + parallelSeries.points[0].y) / 2,
-  };
-  const dashedEnd = {
-    x: (baseSeries.points[1].x + parallelSeries.points[1].x) / 2,
-    y: (baseSeries.points[1].y + parallelSeries.points[1].y) / 2,
-  };
-  
-  const updatedDashedSeries = {
-    ...dashedSeries,
+
+  // Extend base line to chart bounds
+  const extendedBase = extendLineToRange(
+    baseSeries.points[0],
+    baseSeries.points[1],
+    chartBounds.minX,
+    chartBounds.maxX,
+    chartBounds.minY,
+    chartBounds.maxY
+  );
+
+  // Extend parallel line to chart bounds
+  const extendedParallel = extendLineToRange(
+    parallelSeries.points[0],
+    parallelSeries.points[1],
+    chartBounds.minX,
+    chartBounds.maxX,
+    chartBounds.minY,
+    chartBounds.maxY
+  );
+
+  const updatedExtendedBaseSeries = {
+    ...extendedBaseSeries,
     points: [
       {
-        ...dashedSeries.points[0],
-        ...dashedStart,
+        ...extendedBaseSeries.points[0],
+        ...extendedBase[0],
       },
       {
-        ...dashedSeries.points[1],
-        ...dashedEnd,
+        ...extendedBaseSeries.points[1],
+        ...extendedBase[1],
       },
     ],
   };
-  
-  // Calculate new center point (center of all 4 boundary points)
-  const centerX = (baseSeries.points[0].x + baseSeries.points[1].x + parallelSeries.points[0].x + parallelSeries.points[1].x) / 4;
-  const centerY = (baseSeries.points[0].y + baseSeries.points[1].y + parallelSeries.points[0].y + parallelSeries.points[1].y) / 4;
-  
-  const updatedCenterSeries = {
-    ...centerSeries,
+
+  const updatedExtendedParallelSeries = {
+    ...extendedParallelSeries,
     points: [
       {
-        ...centerSeries.points[0],
-        x: centerX,
-        y: centerY,
+        ...extendedParallelSeries.points[0],
+        ...extendedParallel[0],
+      },
+      {
+        ...extendedParallelSeries.points[1],
+        ...extendedParallel[1],
       },
     ],
   };
-  
+
   return {
     ...drawing,
-    series: [baseSeries, parallelSeries, updatedDashedSeries, updatedCenterSeries],
+    series: [baseSeries, parallelSeries, updatedExtendedBaseSeries, updatedExtendedParallelSeries],
   };
 };
 

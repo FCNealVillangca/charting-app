@@ -213,8 +213,15 @@ export function useDrawingsPersistence({
           savedDrawingIds.current.delete(drawingId);
           lastSavedState.current.delete(drawingId);
           console.log('Deleted drawing with ID:', drawingId);
-        } catch (error) {
-          console.error(`Error deleting drawing ${drawingId}:`, error);
+        } catch (error: any) {
+          // If drawing doesn't exist (404), just remove from tracking - it's already gone
+          if (error?.message?.includes('not found') || error?.message?.includes('404')) {
+            savedDrawingIds.current.delete(drawingId);
+            lastSavedState.current.delete(drawingId);
+            console.log(`Drawing ${drawingId} not found on server, removed from tracking`);
+          } else {
+            console.error(`Error deleting drawing ${drawingId}:`, error);
+          }
         } finally {
           setIsLoading(false);
         }

@@ -2,7 +2,6 @@ import Highcharts from "highcharts";
 import type { Drawing, DataPoint } from "./chart-types";
 import {
   drawingXToTimestamp,
-  axisDeltaToSeconds,
 } from "./chart-utils";
 
 /**
@@ -103,58 +102,49 @@ export function renderDrawingSeries(
           }
 
         case "channel":
-          // Derive by name
-          const isCenterPoint = s?.name === 'tlinecenter' || s.points.length === 1;
-          const isDashedLine = s?.name === 'tlinemid';
-          
-          if (isCenterPoint) {
-            // Render center point as a single draggable dot
-            return {
-              ...baseOptions,
-              data: toHighchartsData(pointsWithTime),
-              type: "scatter" as const,
-              color: "#000000",
-              marker: createMarker("#000000", 4, "circle"),
-              lineWidth: 0,
-            } as Highcharts.SeriesScatterOptions;
-          }
-          
-          if (isDashedLine && pointsWithTime.length >= 2) {
-            // Render dashed line (no draggable markers on the line endpoints)
-            return {
-              ...baseOptions,
-              data: toHighchartsData(pointsWithTime),
-              type: "line" as const,
-              color: "#888888", // Gray for dashed line
-              marker: { enabled: false }, // No markers on dashed line
-              lineWidth: 1,
-              dashStyle: "Dash",
-              enableMouseTracking: false, // Can't interact with dashed line
-            } as Highcharts.SeriesLineOptions;
-          }
-          
-          // Render boundary lines without extension (only between provided points)
-          if (pointsWithTime.length >= 2) {
-            return {
-              ...baseOptions,
-              data: toHighchartsData(pointsWithTime),
-              type: "line" as const,
-              color,
-              lineColor: color,
-              marker: createMarker(color, 4, "circle"),
-              lineWidth: 2,
-            } as Highcharts.SeriesLineOptions;
-          } else {
-            // Incomplete channel - render first point as scatter
-            return {
-              ...baseOptions,
-              data: toHighchartsData(pointsWithTime),
-              type: "scatter" as const,
-              color,
-              marker: createMarker(color, 4, "circle"),
-              lineWidth: 0,
-            } as Highcharts.SeriesScatterOptions;
-          }
+           // Check if this is an extended series
+           const isExtended = (s as any)?.style?.extended === true;
+
+           if (isExtended && pointsWithTime.length >= 2) {
+             // Render extended lines - full chart spanning, no markers, reduced opacity
+             return {
+               ...baseOptions,
+               data: toHighchartsData(pointsWithTime),
+               type: "line" as const,
+               color,
+               lineColor: color,
+               marker: { enabled: false }, // No markers on extended lines
+               lineWidth: 1,
+               opacity: 0.7, // Slightly transparent
+               enableMouseTracking: false, // Can't interact with extended lines
+               zIndex: 1, // Behind the main channel lines
+               clip: false, // Allow line to extend beyond plot area
+             } as Highcharts.SeriesLineOptions;
+           }
+
+           // Render boundary lines (original user-drawn lines) with markers
+           if (pointsWithTime.length >= 2) {
+             return {
+               ...baseOptions,
+               data: toHighchartsData(pointsWithTime),
+               type: "line" as const,
+               color,
+               lineColor: color,
+               marker: createMarker(color, 4, "circle"),
+               lineWidth: 2,
+               zIndex: 2, // Above extended lines
+             } as Highcharts.SeriesLineOptions;
+           } else {
+             // Incomplete channel - render first point as scatter
+             return {
+               ...baseOptions,
+               data: toHighchartsData(pointsWithTime),
+               type: "scatter" as const,
+               color,
+               marker: createMarker(color, 4, "circle"),
+               lineWidth: 0,
+             } as Highcharts.SeriesScatterOptions;
+           }
 
         case "hline":
           // Horizontal line - extends across entire chart at a fixed y-value

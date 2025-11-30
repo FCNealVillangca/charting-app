@@ -171,7 +171,32 @@ class DrawingService:
             order_index=point_idx
         )
         db.add(point_model)
-    
+
+    def _extend_line_to_bounds(self, p1: dict, p2: dict, min_x: float, max_x: float, min_y: float, max_y: float) -> tuple:
+        """Extend a line defined by two points to chart boundaries"""
+        x1, y1 = p1['x'], p1['y']
+        x2, y2 = p2['x'], p2['y']
+
+        # Handle vertical lines
+        if x2 == x1:
+            return (
+                {'x': x1, 'y': min_y},
+                {'x': x1, 'y': max_y}
+            )
+
+        # Calculate slope and intercept
+        m = (y2 - y1) / (x2 - x1)
+        b = y1 - m * x1
+
+        # Calculate y values at x boundaries
+        y_at_min_x = m * min_x + b
+        y_at_max_x = m * max_x + b
+
+        return (
+            {'x': min_x, 'y': y_at_min_x},
+            {'x': max_x, 'y': y_at_max_x}
+        )
+
     # =============================================================================
     # PUBLIC METHODS
     # =============================================================================
@@ -224,42 +249,140 @@ class DrawingService:
         if chart_bounds:
             print(f"📊 CHART BOUNDS IN SERVICE: minX={chart_bounds.minX}, maxX={chart_bounds.maxX}, minY={chart_bounds.minY}, maxY={chart_bounds.maxY}")
 
-        # Calculate center elements for channels
-        if drawing.type == 'channel' and len(drawing.series) == 2:
+        # Extend channel lines to chart bounds with padding
+        if drawing.type == 'channel' and len(drawing.series) == 2 and chart_bounds:
             # Extract base and parallel points
             base_points = drawing.series[0].points
             parallel_points = drawing.series[1].points
 
-            # Calculate center line midpoints
-            midpoint1_x = (base_points[0].x + parallel_points[0].x) / 2
-            midpoint1_y = (base_points[0].y + parallel_points[0].y) / 2
-            midpoint2_x = (base_points[1].x + parallel_points[1].x) / 2
-            midpoint2_y = (base_points[1].y + parallel_points[1].y) / 2
+            logger.info(f"🔵 CHANNEL EXTENSION DEBUG:")
+            logger.info(f"  Base points: ({base_points[0].x}, {base_points[0].y}) -> ({base_points[1].x}, {base_points[1].y})")
+            logger.info(f"  Parallel points: ({parallel_points[0].x}, {parallel_points[0].y}) -> ({parallel_points[1].x}, {parallel_points[1].y})")
 
-            # Create center line series
-            center_line_series = {
-                'name': 'tlinemid',
-                'style': {'color': '#888888'},
+            # Calculate padding: extend 20% beyond the data range
+            time_span = chart_bounds.maxX - chart_bounds.minX
+            price_span = chart_bounds.maxY - chart_bounds.minY
+            padding_x = time_span * 0.2  # 20% padding on time axis
+            padding_y = price_span * 0.1  # 10% padding on price axis
+            
+            extended_min_x = chart_bounds.minX - padding_x
+            extended_max_x = chart_bounds.maxX + padding_x
+            extended_min_y = chart_bounds.minY - padding_y
+            extended_max_y = chart_bounds.maxY + padding_y
+
+            logger.info(f"  Chart bounds: minX={chart_bounds.minX}, maxX={chart_bounds.maxX}, minY={chart_bounds.minY}, maxY={chart_bounds.maxY}")
+            logger.info(f"  Extended bounds: minX={extended_min_x}, maxX={extended_max_x}, minY={extended_min_y}, maxY={extended_max_y}")
+
+            # Extend base line to extended bounds
+            extended_base = self._extend_line_to_bounds(
+                {'x': base_points[0].x, 'y': base_points[0].y},
+                {'x': base_points[1].x, 'y': base_points[1].y},
+                extended_min_x, extended_max_x,
+                extended_min_y, extended_max_y
+            )
+
+            logger.info(f"  Extended base: ({extended_base[0]['x']}, {extended_base[0]['y']}) -> ({extended_base[1]['x']}, {extended_base[1]['y']})")
+
+            # Calculate the perpendicular distance from parallel line to base line
+            # Use the same method as frontend: calculate perpendicular distance from a point on parallel to base
+            base_p1 = {'x': base_points[0].x, 'y': base_points[0].y}
+            base_p2 = {'x': base_points[1].x, 'y': base_points[1].y}
+            
+            # Calculate direction vector and length of base line
+            dx = base_p2['x'] - base_p1['x']
+            dy = base_p2['y'] - base_p1['y']
+            length = (dx * dx + dy * dy) ** 0.5
+            
+            logger.info(f"  Base line vector: dx={dx}, dy={dy}, length={length}")
+            
+            if length > 0:
+                # Calculate perpendicular distance from first point of parallel line to base line
+                # Formula matches frontend calculatePerpendicularDistance exactly:
+                # ((point.y - lineStart.y) * dx - (point.x - lineStart.x) * dy) / length
+                parallel_p1 = {'x': parallel_points[0].x, 'y': parallel_points[0].y}
+                perpendicular_distance = ((parallel_p1['y'] - base_p1['y']) * dx - (parallel_p1['x'] - base_p1['x']) * dy) / length
+                
+                # Verify: calculate from second point too (should be same if lines are parallel)
+                parallel_p2 = {'x': parallel_points[1].x, 'y': parallel_points[1].y}
+                perpendicular_distance2 = ((parallel_p2['y'] - base_p1['y']) * dx - (parallel_p2['x'] - base_p1['x']) * dy) / length
+                
+                logger.info(f"  Perpendicular distance from p1: {perpendicular_distance}")
+                logger.info(f"  Perpendicular distance from p2: {perpendicular_distance2}")
+                logger.info(f"  Difference: {abs(perpendicular_distance - perpendicular_distance2)}")
+                
+                # Use average if they differ slightly (due to floating point), otherwise use first
+                if abs(perpendicular_distance - perpendicular_distance2) < 0.0001:
+                    # Lines are parallel, use the distance
+                    final_distance = perpendicular_distance
+                    logger.info(f"  Using distance: {final_distance} (from p1)")
+                else:
+                    # Lines might not be perfectly parallel, use average
+                    final_distance = (perpendicular_distance + perpendicular_distance2) / 2.0
+                    logger.info(f"  Using average distance: {final_distance}")
+                
+                # Calculate perpendicular unit vector (same as frontend calculateParallelLine)
+                # Perpendicular to (dx, dy) is (-dy, dx), normalized
+                perp_x = -dy / length
+                perp_y = dx / length
+                
+                logger.info(f"  Perpendicular unit vector: ({perp_x}, {perp_y})")
+                
+                # Apply the perpendicular offset to extended base line points
+                # This creates a parallel line at the exact same distance, maintaining the same slope
+                extended_parallel = [
+                    {
+                        'x': extended_base[0]['x'] + perp_x * final_distance,
+                        'y': extended_base[0]['y'] + perp_y * final_distance
+                    },
+                    {
+                        'x': extended_base[1]['x'] + perp_x * final_distance,
+                        'y': extended_base[1]['y'] + perp_y * final_distance
+                    }
+                ]
+                
+                logger.info(f"  Extended parallel: ({extended_parallel[0]['x']}, {extended_parallel[0]['y']}) -> ({extended_parallel[1]['x']}, {extended_parallel[1]['y']})")
+                
+                # Verify the slope of extended lines
+                if extended_base[1]['x'] != extended_base[0]['x']:
+                    base_slope = (extended_base[1]['y'] - extended_base[0]['y']) / (extended_base[1]['x'] - extended_base[0]['x'])
+                    parallel_slope = (extended_parallel[1]['y'] - extended_parallel[0]['y']) / (extended_parallel[1]['x'] - extended_parallel[0]['x'])
+                    logger.info(f"  Extended base slope: {base_slope}")
+                    logger.info(f"  Extended parallel slope: {parallel_slope}")
+                    logger.info(f"  Slope difference: {abs(base_slope - parallel_slope)}")
+            else:
+                # Fallback: if base line has no length, just extend parallel independently
+                extended_parallel = self._extend_line_to_bounds(
+                    {'x': parallel_points[0].x, 'y': parallel_points[0].y},
+                    {'x': parallel_points[1].x, 'y': parallel_points[1].y},
+                    extended_min_x, extended_max_x,
+                    extended_min_y, extended_max_y
+                )
+
+            # Create extended base line series
+            base_color = drawing.series[0].style.get('color') if drawing.series[0].style else '#000000'
+            extended_base_series = {
+                'name': 'extended_base',
+                'style': {'color': base_color, 'extended': True},
                 'points': [
-                    {'x': midpoint1_x, 'y': midpoint1_y},
-                    {'x': midpoint2_x, 'y': midpoint2_y}
+                    {'x': extended_base[0]['x'], 'y': extended_base[0]['y']},
+                    {'x': extended_base[1]['x'], 'y': extended_base[1]['y']}
                 ]
             }
 
-            # Calculate center point (average of all 4 boundary points)
-            center_x = (base_points[0].x + base_points[1].x + parallel_points[0].x + parallel_points[1].x) / 4
-            center_y = (base_points[0].y + base_points[1].y + parallel_points[0].y + parallel_points[1].y) / 4
-
-            # Create center point series
-            center_point_series = {
-                'name': 'tlinecenter',
-                'style': {'color': '#000000'},
-                'points': [{'x': center_x, 'y': center_y}]
+            # Create extended parallel line series
+            parallel_color = drawing.series[1].style.get('color') if drawing.series[1].style else '#000000'
+            extended_parallel_series = {
+                'name': 'extended_parallel',
+                'style': {'color': parallel_color, 'extended': True},
+                'points': [
+                    {'x': extended_parallel[0]['x'], 'y': extended_parallel[0]['y']},
+                    {'x': extended_parallel[1]['x'], 'y': extended_parallel[1]['y']}
+                ]
             }
 
-            # Append center elements to drawing series
-            drawing.series.append(Series(**center_line_series))
-            drawing.series.append(Series(**center_point_series))
+            # Append extended lines to drawing series
+            drawing.series.append(Series(**extended_base_series))
+            drawing.series.append(Series(**extended_parallel_series))
         
         db = self._get_db()
         try:
@@ -318,31 +441,70 @@ class DrawingService:
     
     def update_drawing(self, drawing_id: int, updates: DrawingUpdate, chart_bounds: Optional[ChartBounds] = None) -> Optional[Drawing]:
         """Update an existing drawing"""
-        
+
         # Access chart bounds from frontend (NOT saved to DB - just for calculations)
         if chart_bounds:
             print(f"📊 CHART BOUNDS IN SERVICE (UPDATE): minX={chart_bounds.minX}, maxX={chart_bounds.maxX}, minY={chart_bounds.minY}, maxY={chart_bounds.maxY}")
-            # TODO: Use chart_bounds for your trend channel extension logic here!
-        
+
         db = self._get_db()
         try:
             drawing_model = db.query(DrawingModel).options(
                 joinedload(DrawingModel.series).joinedload(SeriesModel.points)
             ).filter(DrawingModel.id == drawing_id).first()
-            
+
             if not drawing_model:
                 return None
-            
+
             # Update basic fields
             self._update_basic_drawing_fields(drawing_model, updates)
-            
+
             # Update series if provided
             if updates.series is not None:
                 self._update_series_data(db, drawing_model, updates.series)
-            
+
+                # Recalculate extended lines for channels if chart bounds provided
+                if drawing_model.type == 'channel' and len(updates.series) >= 4 and chart_bounds:
+                    # Get the base and parallel series (series 0 and 1)
+                    base_series = updates.series[0] if len(updates.series) > 0 else None
+                    parallel_series = updates.series[1] if len(updates.series) > 1 else None
+                    extended_base_series = updates.series[2] if len(updates.series) > 2 else None
+                    extended_parallel_series = updates.series[3] if len(updates.series) > 3 else None
+
+                    # If we have the required series, recalculate extended lines
+                    if base_series and parallel_series and extended_base_series and extended_parallel_series and len(base_series.points) >= 2 and len(parallel_series.points) >= 2:
+                        # Extend base line to chart bounds
+                        extended_base = self._extend_line_to_bounds(
+                            {'x': base_series.points[0].x, 'y': base_series.points[0].y},
+                            {'x': base_series.points[1].x, 'y': base_series.points[1].y},
+                            chart_bounds.minX, chart_bounds.maxX,
+                            chart_bounds.minY, chart_bounds.maxY
+                        )
+
+                        # Extend parallel line to chart bounds
+                        extended_parallel = self._extend_line_to_bounds(
+                            {'x': parallel_series.points[0].x, 'y': parallel_series.points[0].y},
+                            {'x': parallel_series.points[1].x, 'y': parallel_series.points[1].y},
+                            chart_bounds.minX, chart_bounds.maxX,
+                            chart_bounds.minY, chart_bounds.maxY
+                        )
+
+                        # Update extended series points
+                        extended_base_series.points[0].x = extended_base[0]['x']
+                        extended_base_series.points[0].y = extended_base[0]['y']
+                        extended_base_series.points[1].x = extended_base[1]['x']
+                        extended_base_series.points[1].y = extended_base[1]['y']
+
+                        extended_parallel_series.points[0].x = extended_parallel[0]['x']
+                        extended_parallel_series.points[0].y = extended_parallel[0]['y']
+                        extended_parallel_series.points[1].x = extended_parallel[1]['x']
+                        extended_parallel_series.points[1].y = extended_parallel[1]['y']
+
+                        # Update the series data with recalculated extended lines
+                        self._update_series_data(db, drawing_model, updates.series)
+
             db.commit()
             db.refresh(drawing_model)
-            
+
             return self._drawing_model_to_schema(drawing_model)
         except Exception as e:
             db.rollback()
