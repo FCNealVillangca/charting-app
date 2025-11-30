@@ -6,7 +6,7 @@ from app.models.drawing import Drawing as DrawingModel
 from app.models.series import Series as SeriesModel
 from app.models.point import Point as PointModel
 from app.models.pair import Pair as PairModel
-from app.schemas.drawing import Drawing, DrawingCreate, DrawingUpdate, ChartBounds
+from app.schemas.drawing import Drawing, DrawingCreate, DrawingUpdate, ChartBounds, Series
 
 
 logger = logging.getLogger(__name__)
@@ -223,7 +223,43 @@ class DrawingService:
         # Access chart bounds from frontend (NOT saved to DB - just for calculations)
         if chart_bounds:
             print(f"📊 CHART BOUNDS IN SERVICE: minX={chart_bounds.minX}, maxX={chart_bounds.maxX}, minY={chart_bounds.minY}, maxY={chart_bounds.maxY}")
-            # TODO: Use chart_bounds for your trend channel extension logic here!
+
+        # Calculate center elements for channels
+        if drawing.type == 'channel' and len(drawing.series) == 2:
+            # Extract base and parallel points
+            base_points = drawing.series[0].points
+            parallel_points = drawing.series[1].points
+
+            # Calculate center line midpoints
+            midpoint1_x = (base_points[0].x + parallel_points[0].x) / 2
+            midpoint1_y = (base_points[0].y + parallel_points[0].y) / 2
+            midpoint2_x = (base_points[1].x + parallel_points[1].x) / 2
+            midpoint2_y = (base_points[1].y + parallel_points[1].y) / 2
+
+            # Create center line series
+            center_line_series = {
+                'name': 'tlinemid',
+                'style': {'color': '#888888'},
+                'points': [
+                    {'x': midpoint1_x, 'y': midpoint1_y},
+                    {'x': midpoint2_x, 'y': midpoint2_y}
+                ]
+            }
+
+            # Calculate center point (average of all 4 boundary points)
+            center_x = (base_points[0].x + base_points[1].x + parallel_points[0].x + parallel_points[1].x) / 4
+            center_y = (base_points[0].y + base_points[1].y + parallel_points[0].y + parallel_points[1].y) / 4
+
+            # Create center point series
+            center_point_series = {
+                'name': 'tlinecenter',
+                'style': {'color': '#000000'},
+                'points': [{'x': center_x, 'y': center_y}]
+            }
+
+            # Append center elements to drawing series
+            drawing.series.append(Series(**center_line_series))
+            drawing.series.append(Series(**center_point_series))
         
         db = self._get_db()
         try:

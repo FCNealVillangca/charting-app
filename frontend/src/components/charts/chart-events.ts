@@ -3,6 +3,34 @@ import type { DataPoint, Drawing } from "./chart-types";
 import { handleNoneTool, handleShapeTool, handleLineTool, handleChannelTool, handleHLineTool } from "./chart-tools";
 import { axisValueToNearestPoint, axisDeltaToSeconds } from "./chart-utils";
 
+export interface ToolHandlerParams {
+  timestamp: number;  // Changed: Now stores timestamp instead of index
+  yValue: number;
+  chartData: DataPoint[];  // Added: Need chartData for timestamp operations
+  drawings: Drawing[];
+  selectedData: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null;
+  findPoints: (
+    x: number,
+    y: number,
+    xTolerance?: number,
+    yTolerance?: number
+  ) => { drawingId: number | null; seriesId: number | null; pointId: number | null } | null;
+  setSelectedData: (
+    point: { drawingId: number | null; seriesId: number | null; pointId: number | null } | null
+  ) => void;
+  setSelectedDrawingId: (drawingId: number | null) => void;
+  addDrawing: (drawing: Drawing) => void;
+  addPointToDrawing: (
+    drawingId: number | null,
+    seriesId: number | null,
+    point: { x: number; y: number }
+  ) => void;
+  completeDrawing: (drawingId: number | null) => void;
+  updateDrawing?: (drawingId: number | null, updates: Partial<Drawing>) => void;
+  pair: string;
+  chartBounds?: { minX: number; maxX: number; minY: number; maxY: number };
+}
+
 // Simple debounce to avoid multiple alerts in quick succession
 let lastEndAlertTime = 0;
 
@@ -263,7 +291,7 @@ export function createHandleMouseDown(
   completeDrawing: (drawingId: number | null) => void,
   updateDrawing: (drawingId: number | null, updates: Partial<Drawing>) => void
 ) {
-  return (e: MouseEvent) => {
+  return async (e: MouseEvent) => {
     if (!chartInstance.current) return;
 
     const chart = chartInstance.current;
@@ -298,6 +326,11 @@ export function createHandleMouseDown(
       e.stopPropagation();
     }
 
+    // Get context values
+    const chartContext = (chart as any).chartContext;
+    const pair = chartContext?.pair || "EURUSD";
+    const chartBounds = chartContext?.chartBounds;
+
     // Prepare common parameters for tool handlers
     // Wrap hit-test to always use the pixel-derived tolerances so handlers don't fall back to wide defaults
     const findWithTol = (
@@ -320,6 +353,8 @@ export function createHandleMouseDown(
       addPointToDrawing,
       completeDrawing,
       updateDrawing,
+      pair,
+      chartBounds,
     };
 
     if (activeTool === "none" || activeTool === null) {
@@ -335,7 +370,7 @@ export function createHandleMouseDown(
     } else if (activeTool === "line") {
       handleLineTool(toolHandlerParams);
     } else if (activeTool === "channel") {
-      handleChannelTool(toolHandlerParams);
+      await handleChannelTool(toolHandlerParams);
     } else if (activeTool === "hline") {
       handleHLineTool(toolHandlerParams);
     }

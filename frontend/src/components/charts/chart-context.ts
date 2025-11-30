@@ -15,8 +15,14 @@ import {
 
 export const ChartContext = createContext<ChartContextType | undefined>(undefined);
 
-export const ChartProvider: React.FC<{ children: ReactNode }> = ({
+export const ChartProvider: React.FC<{
+  children: ReactNode;
+  pair?: string;
+  chartBounds?: { minX: number; maxX: number; minY: number; maxY: number }
+}> = ({
   children,
+  pair,
+  chartBounds,
 }) => {
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [selectedData, setSelectedData] = useState<{ drawingId: number | null; seriesId: number | null; pointId: number | null } | null>(null);
@@ -208,7 +214,9 @@ export const ChartProvider: React.FC<{ children: ReactNode }> = ({
         getIncompleteDrawing: getIncompleteDrawingCallback,
         completeDrawing,
         isLoading,
-        setIsLoading
+        setIsLoading,
+        pair,
+        chartBounds
       }
     },
     children

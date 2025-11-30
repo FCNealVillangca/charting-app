@@ -54,7 +54,7 @@ export function useDrawingsPersistence({
         hasLoadedForPair.current = pair;
         
         // Normalize and add each loaded drawing to context
-        response.drawings.forEach((serverDrawing) => {
+        response.drawings.forEach((serverDrawing: any) => {
           // Move color into each series.style if missing, and drop drawing.color
           const normalized: any = {
             ...serverDrawing,
@@ -109,6 +109,9 @@ export function useDrawingsPersistence({
         // Skip incomplete drawings
         if (!isComplete) continue;
 
+        // Skip drawings that already have server IDs (synchronously saved channels)
+        if (drawing.id !== null) continue;
+
         // Check if this drawing has a server ID
         if (drawing.id === null) {
           // New complete drawing - persist to backend first
@@ -141,8 +144,8 @@ export function useDrawingsPersistence({
             });
 
             // Track as saved
-            savedDrawingIds.current.add(createdDrawing.id);
-            lastSavedState.current.set(createdDrawing.id, JSON.stringify(drawing));
+            savedDrawingIds.current.add(createdDrawing.id!);
+            lastSavedState.current.set(createdDrawing.id!, JSON.stringify(drawing));
 
             console.log('Created drawing with ID:', createdDrawing.id);
           } catch (error) {

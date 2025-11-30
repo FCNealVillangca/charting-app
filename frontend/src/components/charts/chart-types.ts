@@ -60,5 +60,7 @@ export interface ChartContextType {
   completeDrawing: (drawingId: number | null) => void;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
+  pair?: string;
+  chartBounds?: { minX: number; maxX: number; minY: number; maxY: number };
 }
 

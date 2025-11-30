@@ -2,12 +2,13 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams } from "react-router";
 import ChartNavbar from "../../components/charts/chart-navbar";
 import Chart from "../../components/charts/chart";
+import { ChartProvider } from "../../components/charts/chart-context";
 import { apiClient, type CandleData } from "../../lib/api-client";
 import type { DataPoint } from "../../components/charts/chart-types";
 import { useChart } from "../../components/charts/chart-hook";
 import { useDrawingsPersistence } from "../../hooks/useDrawingsPersistence";
 
-function Pairs() {
+function PairsContent() {
   const { pair } = useParams<{ pair: string }>();
   const [data, setData] = useState<CandleData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -15,17 +16,17 @@ function Pairs() {
   const [currentPair, setCurrentPair] = useState(pair || "EURUSD");
   const [prevUrl, setPrevUrl] = useState<string | null>(null);
   const [isAutoFetching, setIsAutoFetching] = useState(false);
-  
+
   // Get chart context for drawings
   const { drawings, addDrawing, replaceDrawing, setIsLoading } = useChart();
-  
+
   // Calculate chart bounds from current dataset
   const chartBounds = useMemo(() => {
     if (data.length === 0) return undefined;
-    
+
     const times = data.map(d => d.time);
     const prices = data.flatMap(d => [d.high, d.low]);
-    
+
     return {
       minX: Math.min(...times),
       maxX: Math.max(...times),
@@ -33,7 +34,7 @@ function Pairs() {
       maxY: Math.max(...prices),
     };
   }, [data]);
-  
+
   // Auto-save drawings to backend (also handles loading on mount)
   useDrawingsPersistence({
     pair: currentPair,
@@ -141,11 +142,24 @@ function Pairs() {
         currentPair={currentPair}
         onPairChange={handlePairChange}
       />
-      
+
       <div className="flex-1 overflow-hidden">
-        <Chart data={chartData} onReachStart={handleReachStart} />
+        <Chart
+          data={chartData}
+          onReachStart={handleReachStart}
+          pair={currentPair}
+          chartBounds={chartBounds}
+        />
       </div>
     </div>
+  );
+}
+
+function Pairs() {
+  return (
+    <ChartProvider>
+      <PairsContent />
+    </ChartProvider>
   );
 }
 

@@ -3,6 +3,7 @@ import {
   calculatePerpendicularDistance,
   calculateParallelLine,
 } from "./chart-utils";
+import { apiClient, type Series } from "../../lib/api-client";
 
 export interface ToolHandlerParams {
   timestamp: number;  // Changed: Now stores timestamp instead of index
@@ -28,6 +29,8 @@ export interface ToolHandlerParams {
   ) => void;
   completeDrawing: (drawingId: number | null) => void;
   updateDrawing?: (drawingId: number | null, updates: Partial<Drawing>) => void;
+  pair: string;
+  chartBounds?: { minX: number; maxX: number; minY: number; maxY: number };
 }
 
 /**
@@ -164,7 +167,7 @@ export function handleLineTool(params: ToolHandlerParams): void {
  * Handles clicks for channel tool
  * Manages incomplete channel state and completion
  */
-export function handleChannelTool(params: ToolHandlerParams): void {
+export async function handleChannelTool(params: ToolHandlerParams): Promise<void> {
   const {
     timestamp,  // Changed: Use timestamp instead of xValue
     yValue,
@@ -245,58 +248,49 @@ export function handleChannelTool(params: ToolHandlerParams): void {
         ],
       };
       
-      // Build dashed center line (between the two boundary lines)
-      const dashedStart = {
-        x: (baseSeries.points[0].x + parallelStart.x) / 2,
-        y: (baseSeries.points[0].y + parallelStart.y) / 2,
-      };
-      const dashedEnd = {
-        x: (baseSeries.points[1].x + parallelEnd.x) / 2,
-        y: (baseSeries.points[1].y + parallelEnd.y) / 2,
-      };
-
-      const dashedSeries = {
-        id: null,
-        name: "tlinemid",
-        style: { color: "#888888" },
-        points: [
-          { id: null, ...dashedStart },
-          { id: null, ...dashedEnd },
-        ],
-      };
-
-      // Single center point for vertical drag of the whole channel
-      const centerX = (baseSeries.points[0].x + baseSeries.points[1].x + parallelStart.x + parallelEnd.x) / 4;
-      const centerY = (baseSeries.points[0].y + baseSeries.points[1].y + parallelStart.y + parallelEnd.y) / 4;
-      const centerSeries = {
-        id: null,
-        name: "tlinecenter",
-        style: { color: "#000000" },
-        points: [{ id: null, x: centerX, y: centerY }],
-      };
-
-      // Assign temporary local ids so renderer/updates can identify series
-      const baseId = baseSeries.id ?? 1;
-      const parallelId = 2;
-      const dashedId = 3;
-      const centerId = 4;
-
-      const finalSeries = [
-        { ...baseSeries, id: baseId, points: [...baseSeries.points] },
-        { ...parallelSeries, id: parallelId },
-        { ...dashedSeries, id: dashedId },
-        { ...centerSeries, id: centerId },
+      // Only include base and parallel series for backend save
+      const finalSeries: Series[] = [
+        { id: baseSeries.id, name: baseSeries.name || "tline", style: baseSeries.style, points: [...baseSeries.points] },
+        { id: parallelSeries.id, name: parallelSeries.name || "tline2", style: parallelSeries.style, points: parallelSeries.points },
       ];
 
-      if (updateDrawing) {
-        updateDrawing(incompleteDrawing.id, {
+      // Synchronous save to backend
+      try {
+        const drawingData = {
+          name: incompleteDrawing.name,
+          type: incompleteDrawing.type,
+          color: "#000000",
           series: finalSeries,
-          isIncomplete: false,
-        });
-      }
+          pair: params.pair,
+          chartBounds: params.chartBounds
+        };
 
-      completeDrawing(incompleteDrawing.id);
-      setSelectedDrawingId(incompleteDrawing.id);
+        const response = await apiClient.createDrawing(drawingData);
+
+        // Update local drawing with server IDs
+        incompleteDrawing.id = response.id;
+        response.series.forEach((s, i) => {
+          if (incompleteDrawing.series[i]) {
+            incompleteDrawing.series[i].id = s.id;
+            s.points.forEach((p, j) => {
+              if (incompleteDrawing.series[i].points[j]) {
+                incompleteDrawing.series[i].points[j].id = p.id;
+              }
+            });
+          }
+        });
+
+        // Update the drawing with complete server data (including calculated center elements)
+        if (params.updateDrawing) {
+          params.updateDrawing(incompleteDrawing.id, { series: response.series });
+        }
+
+        completeDrawing(incompleteDrawing.id);
+        setSelectedDrawingId(incompleteDrawing.id);
+      } catch (error) {
+        console.error('Failed to save channel:', error);
+        // Keep drawing incomplete on error
+      }
     }
   }
 }

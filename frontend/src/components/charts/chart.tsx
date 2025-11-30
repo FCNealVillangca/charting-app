@@ -38,10 +38,12 @@ interface ChartProps {
   height?: number;
   onChartCreated?: (chart: HTMLDivElement) => void;
   onReachStart?: () => void;
+  pair?: string;
+  chartBounds?: { minX: number; maxX: number; minY: number; maxY: number };
 }
 
 const Chart = forwardRef<BaseChartRef, ChartProps>(
-  ({ data, onChartCreated, onReachStart }, ref) => {
+  ({ data, onChartCreated, onReachStart, pair, chartBounds }, ref) => {
     const chartRef = useRef<HTMLDivElement | null>(null);
     const chartInstance = useRef<Highcharts.Chart | null>(null);
     const prevDataLengthRef = useRef<number>(0);
@@ -284,6 +286,8 @@ const Chart = forwardRef<BaseChartRef, ChartProps>(
       if (chartElement && highchartsData.length > 0 && !chartInstance.current) {
         // Create new chart
         chartInstance.current = Highcharts.chart(chartElement, options);
+        // Attach context for event handlers
+        (chartInstance.current as any).chartContext = { pair, chartBounds };
         prevDataLengthRef.current = highchartsData.length;
 
         // Force consistent initial viewport - always show last 400 candles
