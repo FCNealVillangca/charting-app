@@ -33,6 +33,18 @@ export function useDrawingsPersistence({
   const lastSavedState = useRef<Map<number, string>>(new Map());
   // Track if we've loaded for this pair to prevent double-loading
   const hasLoadedForPair = useRef<string | null>(null);
+  // Loading counter to prevent stuck cursor
+  const loadingCountRef = useRef(0);
+
+  const incrementLoading = () => {
+    loadingCountRef.current += 1;
+    setIsLoading(true);
+  };
+
+  const decrementLoading = () => {
+    loadingCountRef.current = Math.max(0, loadingCountRef.current - 1);
+    setIsLoading(loadingCountRef.current > 0);
+  };
 
   // Load drawings on mount
   useEffect(() => {
@@ -43,12 +55,15 @@ export function useDrawingsPersistence({
     let cancelled = false;
 
     const loadDrawings = async () => {
+      incrementLoading();
       try {
-        setIsLoading(true);
         const response = await apiClient.getDrawings(pair);
         
         // Check if effect was cancelled (cleanup ran)
-        if (cancelled) return;
+        if (cancelled) {
+          decrementLoading();
+          return;
+        }
         
         // Mark this pair as loaded
         hasLoadedForPair.current = pair;
@@ -84,9 +99,9 @@ export function useDrawingsPersistence({
         return [];
       } finally {
         if (!cancelled) {
-          setIsLoading(false);
           isInitialLoad.current = false;
         }
+        decrementLoading();
       }
     };
 
@@ -112,11 +127,17 @@ export function useDrawingsPersistence({
         // Skip drawings that already have server IDs (synchronously saved channels)
         if (drawing.id !== null) continue;
 
+        // Skip channels - they're saved synchronously in handleChannelTool
+        if (drawing.type === 'channel') {
+          console.log(`⏭️  Skipping channel "${drawing.name}" - saved synchronously`);
+          continue;
+        }
+
         // Check if this drawing has a server ID
         if (drawing.id === null) {
           // New complete drawing - persist to backend first
+          incrementLoading();
           try {
-            setIsLoading(true);
             console.log('📊 Creating drawing with chartBounds:', chartBounds);
             const color = (drawing.series[0] as any)?.style?.color || '#000000';
             const createdDrawing = await apiClient.createDrawing({
@@ -152,7 +173,7 @@ export function useDrawingsPersistence({
             console.error('Error creating drawing:', error);
             // Keep drawing as incomplete or handle error
           } finally {
-            setIsLoading(false);
+            decrementLoading();
           }
         } else {
           // Existing drawing with server ID - check if it changed
@@ -161,8 +182,8 @@ export function useDrawingsPersistence({
           const hasChanged = lastSaved !== drawingJson;
 
           if (hasChanged) {
+            incrementLoading();
             try {
-              setIsLoading(true);
               console.log('📊 Updating drawing with chartBounds:', chartBounds);
               const color = (drawing.series[0] as any)?.style?.color || '#000000';
               await apiClient.updateDrawing(drawing.id, {
@@ -178,7 +199,7 @@ export function useDrawingsPersistence({
             } catch (error) {
               console.error(`Error updating drawing ${drawing.id}:`, error);
             } finally {
-              setIsLoading(false);
+              decrementLoading();
             }
           }
         }
@@ -207,8 +228,8 @@ export function useDrawingsPersistence({
 
     if (deletedDrawingIds.length > 0) {
       deletedDrawingIds.forEach(async (drawingId) => {
+        incrementLoading();
         try {
-          setIsLoading(true);
           await apiClient.deleteDrawing(drawingId);
           savedDrawingIds.current.delete(drawingId);
           lastSavedState.current.delete(drawingId);
@@ -223,7 +244,7 @@ export function useDrawingsPersistence({
             console.error(`Error deleting drawing ${drawingId}:`, error);
           }
         } finally {
-          setIsLoading(false);
+          decrementLoading();
         }
       });
     }

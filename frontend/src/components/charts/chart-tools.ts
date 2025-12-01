@@ -29,6 +29,7 @@ export interface ToolHandlerParams {
   ) => void;
   completeDrawing: (drawingId: number | null) => void;
   updateDrawing?: (drawingId: number | null, updates: Partial<Drawing>) => void;
+  replaceDrawing?: (oldDrawing: Drawing, newDrawing: Drawing) => void;
   pair: string;
   chartBounds?: { minX: number; maxX: number; minY: number; maxY: number };
 }
@@ -267,17 +268,30 @@ export async function handleChannelTool(params: ToolHandlerParams): Promise<void
 
         const response = await apiClient.createDrawing(drawingData);
 
-        // Update the drawing with complete server data (including extended lines)
-        // This replaces the local drawing with the full server response which includes all 4 series
-        if (params.updateDrawing) {
-          params.updateDrawing(incompleteDrawing.id, { 
+        // Create complete drawing from server response (includes all 4 series)
+        const completeDrawing: Drawing = {
+          ...response,
+          isIncomplete: false,
+        };
+
+        // Replace the incomplete drawing with the complete one from server
+        // Use replaceDrawing which matches by object reference (works even with null IDs)
+        if (params.replaceDrawing) {
+          params.replaceDrawing(incompleteDrawing, completeDrawing);
+        } else if (params.updateDrawing) {
+          // Fallback won't work with null ID, but try anyway
+          params.updateDrawing(incompleteDrawing.id, {
             id: response.id,
-            series: response.series 
+            series: response.series,
+            isIncomplete: false,
           });
         }
 
-        completeDrawing(incompleteDrawing.id);
-        setSelectedDrawingId(incompleteDrawing.id);
+        // Mark as complete and deselect tool (completeDrawing sets activeTool to "none")
+        params.completeDrawing(response.id);
+        
+        // Select the new complete drawing
+        params.setSelectedDrawingId(response.id);
       } catch (error) {
         console.error('Failed to save channel:', error);
         // Keep drawing incomplete on error

@@ -10,7 +10,6 @@ import {
   deleteDrawingById,
   completeDrawingById,
   getIncompleteDrawing,
-  recalculateChannelExtendedLines,
 } from "./chart-utils";
 
 export const ChartContext = createContext<ChartContextType | undefined>(undefined);
@@ -32,7 +31,20 @@ export const ChartProvider: React.FC<{
   const chartRef = useRef<BaseChartRef>(null);
 
   const addDrawing = useCallback((newDrawing: Drawing) => {
-    setDrawings((prev) => [...prev, newDrawing]);
+    setDrawings((prev) => {
+      // Deduplicate: if drawing has a server ID, replace existing drawing with same ID
+      if (newDrawing.id != null) {
+        const existingIndex = prev.findIndex((d) => d.id === newDrawing.id);
+        if (existingIndex !== -1) {
+          // Replace existing drawing
+          const updated = [...prev];
+          updated[existingIndex] = newDrawing;
+          return updated;
+        }
+      }
+      // Otherwise append as new drawing
+      return [...prev, newDrawing];
+    });
   }, []);
 
   const clearDrawings = useCallback(() => {
@@ -43,9 +55,6 @@ export const ChartProvider: React.FC<{
 
   const updatePoint = useCallback((drawingId: number | null, seriesId: number | null, pointId: number | null, x: number, y: number) => {
     setDrawings((prev) => {
-      // Find the drawing being updated
-      const drawing = prev.find(d => d.id === drawingId);
-
       // Normal point update
       const updated = updatePointInDrawings(prev, drawingId, seriesId, pointId, x, y);
 

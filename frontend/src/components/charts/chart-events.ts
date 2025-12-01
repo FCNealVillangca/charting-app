@@ -289,7 +289,8 @@ export function createHandleMouseDown(
     point: { x: number; y: number }
   ) => void,
   completeDrawing: (drawingId: number | null) => void,
-  updateDrawing: (drawingId: number | null, updates: Partial<Drawing>) => void
+  updateDrawing: (drawingId: number | null, updates: Partial<Drawing>) => void,
+  replaceDrawing: (oldDrawing: Drawing, newDrawing: Drawing) => void
 ) {
   return async (e: MouseEvent) => {
     if (!chartInstance.current) return;
@@ -353,6 +354,7 @@ export function createHandleMouseDown(
       addPointToDrawing,
       completeDrawing,
       updateDrawing,
+      replaceDrawing,
       pair,
       chartBounds,
     };
